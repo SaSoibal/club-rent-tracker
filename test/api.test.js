@@ -319,6 +319,21 @@ async function run(name, fn) {
       delete process.env.ADMIN_PHONE;
       assert.ok(threw, 'expected startup error');
     });
+    await run('sms: BulkSMS BD is ready only with API key and sender ID', async () => {
+      const sms = require('../server/sms');
+      const saved = { p: process.env.SMS_PROVIDER, k: process.env.BULKSMS_API_KEY, s: process.env.BULKSMS_SENDER_ID };
+      process.env.SMS_PROVIDER = 'bulksmsbd';
+      delete process.env.BULKSMS_API_KEY; delete process.env.BULKSMS_SENDER_ID;
+      assert.strictEqual(sms.smsReady(), false);
+      process.env.BULKSMS_API_KEY = 'test-key'; process.env.BULKSMS_SENDER_ID = 'CLUB';
+      assert.strictEqual(sms.smsReady(), true);
+      assert.strictEqual(sms.toMsisdn('01711000001'), '8801711000001');
+      process.env.SMS_PROVIDER = 'unknown';
+      assert.strictEqual(sms.smsReady(), false);
+      if (saved.p === undefined) delete process.env.SMS_PROVIDER; else process.env.SMS_PROVIDER = saved.p;
+      if (saved.k === undefined) delete process.env.BULKSMS_API_KEY; else process.env.BULKSMS_API_KEY = saved.k;
+      if (saved.s === undefined) delete process.env.BULKSMS_SENDER_ID; else process.env.BULKSMS_SENDER_ID = saved.s;
+    });
     ps.close();
     fs.rmSync(prodDir, { recursive: true, force: true });
   }

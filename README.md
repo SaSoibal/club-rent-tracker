@@ -14,35 +14,43 @@ Requires Node.js 18 or newer (developed on Node 20).
 
 ## Deploy the backend on Render
 
-The backend is one Node web service with a persistent disk (the SQLite database and screenshots live there). The Blueprint file is `render.yaml`.
+The backend is one Node web service. The Blueprint file is `render.yaml`. It is set to the **free plan**, which means:
 
-**Cost:** the Starter web service (about $7/month) plus the 1 GB disk ($0.25/month). Free Render services cannot keep a disk, so the data would be lost on restart.
+> **Data loss warning:** the free plan has no persistent disk. The database (members, payments, requests) and uploaded screenshots are erased on every restart, redeploy, or sleep (after 15 idle minutes). Use it to try the app, not to keep real club records. For real data, switch to `starter` and uncomment the `disk` block in `render.yaml` (about $7.25/month). No code change is needed.
 
 **Steps**
-1. Push this folder to a GitHub repository (private is fine):
+1. Push this folder to a GitHub repository (private is fine). A local commit is already prepared:
    ```bash
    git remote add origin https://github.com/YOUR-USER/club-rent-tracker.git
    git push -u origin main
    ```
 2. In Render, choose **New → Blueprint**, connect the repository, and apply `render.yaml`.
-3. In the service's **Environment** tab, set `ADMIN_PHONE` to the admin's mobile number (for example `01XXXXXXXXX`). `ADMIN_NAME` defaults to "Club Admin".
+3. In the service's **Environment** tab, set these values (they are not stored in Git):
+   - `ADMIN_PHONE`: the admin's mobile number, e.g. `01XXXXXXXXX`. This creates the first admin when the database is empty.
+   - `BULKSMS_API_KEY`: your BulkSMS BD API key.
+   - `BULKSMS_SENDER_ID`: your approved BulkSMS BD sender ID.
 4. Wait for the deploy to finish. Check `https://YOUR-SERVICE.onrender.com/api/health`. It should show `"demo":false`.
 5. Enter that URL as the **Server address** in the Android app.
 
-**Before real members can sign in:** the server refuses sign-in (HTTP 503) until an SMS provider is connected. Set `SMS_PROVIDER` only after you add an adapter for that provider in `server/sms.js`. The server never returns OTP codes when `DEMO=0`.
+**What the server does with OTPs**
+- The OTP is sent by SMS through BulkSMS BD (`https://bulksmsbd.net/api/smsapi`) and is never returned in an API response when `DEMO=0`.
+- If the API key or sender ID is missing, sign-in returns HTTP 503 with a clear message.
+- The send check treats the reply as failed when the body has a `response_code` other than 202. **Confirm the first real SMS arrives** before inviting members, because the response format is taken from BulkSMS BD's public documentation and not tested against a live account.
 
 **Environment variables**
 
 | Variable | Set in | Purpose |
 |---|---|---|
 | `DEMO` | render.yaml (`0`) | `0` on public servers. Demo mode returns OTP codes to the app. |
-| `DATA_DIR` | render.yaml (`/var/data`) | Location of the database and uploads (the persistent disk) |
+| `DATA_DIR` | render.yaml (`/var/data`) | Location of the database and uploads (the disk mount path, once added) |
 | `ADMIN_PHONE` | dashboard | Creates the first admin on an empty database |
 | `ADMIN_NAME` | render.yaml | Name for that admin |
-| `SMS_PROVIDER` | dashboard | Name of the SMS adapter (not connected yet) |
+| `SMS_PROVIDER` | render.yaml (`bulksmsbd`) | Which SMS adapter to use |
+| `BULKSMS_API_KEY` | dashboard (secret) | BulkSMS BD API key |
+| `BULKSMS_SENDER_ID` | dashboard | Approved BulkSMS BD sender ID |
 | `PORT` | Render sets it | Port to listen on |
 
-**Backups:** the database is in `/var/data/club.db` on the disk. Download a copy from the Render shell before big changes.
+**Backups:** on the starter plan with a disk, the database is `/var/data/club.db`. Download a copy from the Render shell before major changes.
 
 ## Android app (APK)
 

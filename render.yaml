@@ -1,11 +1,15 @@
-# Render Blueprint: one web service with a persistent disk for the SQLite database and screenshots.
-# Persistent disks need a paid instance (starter). The free plan cannot keep the database.
+# Render Blueprint: one web service on the FREE plan.
+#
+# WARNING: free services have no persistent disk. The SQLite database and uploaded
+# screenshots are erased whenever the service restarts, redeploys, or sleeps after 15 idle minutes.
+# For real club data, change `plan` to `starter` and uncomment the `disk` block below
+# (about $7.25/month). No code change is needed.
 services:
   - type: web
     name: club-rent-tracker
     runtime: node
     region: singapore          # closest region to Dhaka
-    plan: starter
+    plan: free
     buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
@@ -15,15 +19,19 @@ services:
         value: "20"
       - key: DEMO                # must stay 0 on a public server (no OTP codes in responses)
         value: "0"
-      - key: DATA_DIR            # database and uploads live on the persistent disk
+      - key: DATA_DIR            # database and uploads (the disk mount path, once a disk is added)
         value: /var/data
       - key: ADMIN_NAME
         value: Club Admin
-      - key: ADMIN_PHONE         # set in the Render dashboard: your admin mobile, e.g. 01XXXXXXXXX
+      - key: ADMIN_PHONE         # set in the Render dashboard: the admin's mobile, e.g. 01XXXXXXXXX
         sync: false
-      - key: SMS_PROVIDER        # sign-in stays disabled until an SMS provider is connected
+      - key: SMS_PROVIDER        # bulksmsbd: OTP sent through BulkSMS BD
+        value: bulksmsbd
+      - key: BULKSMS_API_KEY     # set in the Render dashboard (secret)
         sync: false
-    disk:
-      name: club-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: BULKSMS_SENDER_ID   # set in the Render dashboard: your approved sender ID
+        sync: false
+# disk:                          # uncomment on the starter plan
+#   name: club-data
+#   mountPath: /var/data
+#   sizeGB: 1
