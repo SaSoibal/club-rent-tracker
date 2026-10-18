@@ -14,18 +14,13 @@ CREATE TABLE IF NOT EXISTS users (
   collector_id TEXT,
   bkash TEXT,
   join_period TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  password_hash TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
   created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS otps (
-  phone TEXT PRIMARY KEY,
-  code TEXT NOT NULL,
-  expires_at INTEGER NOT NULL,
-  attempts INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS period_amounts (period TEXT PRIMARY KEY, amount INTEGER NOT NULL);
@@ -102,6 +97,10 @@ function openDb(file) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  // Databases created before password login: add the column and drop the unused OTP table.
+  const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  if (!cols.includes('password_hash')) db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+  db.exec('DROP TABLE IF EXISTS otps');
   return db;
 }
 
@@ -191,12 +190,12 @@ function receiptSvg(amt, to, trx, when) {
 }
 
 // Production: create only the first admin (from ADMIN_PHONE). No demo members or payments.
-function bootstrapAdmin(db, phone, name) {
+function bootstrapAdmin(db, phone, name, passwordHash) {
   const count = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   if (count > 0) return false;
   const now = new Date().toISOString();
-  db.prepare(`INSERT INTO users (id,name,phone,role,pays,active,collector_id,bkash,join_period,created_at)
-              VALUES ('u1',?,?,'admin',0,1,NULL,NULL,'2026-01',?)`).run(name, phone, now);
+  db.prepare(`INSERT INTO users (id,name,phone,role,pays,active,collector_id,bkash,join_period,created_at,password_hash)
+              VALUES ('u1',?,?,'admin',0,1,NULL,NULL,'2026-01',?,?)`).run(name, phone, now, passwordHash);
   const setS = db.prepare('INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)');
   setS.run('default_share', '200');
   setS.run('due_day', '10');

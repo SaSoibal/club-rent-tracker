@@ -1,5 +1,7 @@
 # Render Blueprint: one web service on the FREE plan.
 #
+# Sign-in is mobile number + password. The admin's password comes from ADMIN_PASSWORD (set in the dashboard).
+#
 # WARNING: free services have no persistent disk. The SQLite database and uploaded
 # screenshots are erased whenever the service restarts, redeploys, or sleeps after 15 idle minutes.
 # For real club data, change `plan` to `starter` and uncomment the `disk` block below
@@ -17,7 +19,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: DEMO                # must stay 0 on a public server (no OTP codes in responses)
+      - key: DEMO                # must stay 0 on a public server
         value: "0"
       - key: DATA_DIR            # database and uploads (the disk mount path, once a disk is added)
         value: /var/data
@@ -25,16 +27,8 @@ services:
         value: Club Admin
       - key: ADMIN_PHONE         # set in the Render dashboard: the admin's mobile, e.g. 01XXXXXXXXX
         sync: false
-      - key: OTP_PROVIDER        # login codes are sent by WhatsApp
-        value: whatsapp
-      - key: WHATSAPP_TOKEN      # set in the Render dashboard (secret): Meta access token
+      - key: ADMIN_PASSWORD      # set in the Render dashboard (secret): the admin's first password, 8+ characters
         sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID   # set in the dashboard: the WhatsApp Business phone number ID
-        sync: false
-      - key: WHATSAPP_OTP_TEMPLATE
-        value: club_login_otp    # the approved Authentication template name
-      - key: WHATSAPP_OTP_LANGUAGE
-        value: en
 # disk:                          # uncomment on the starter plan
 #   name: club-data
 #   mountPath: /var/data

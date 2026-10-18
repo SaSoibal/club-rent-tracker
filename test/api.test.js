@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const assert = require('assert');
 const { createApp } = require('../server/index');
-const sms = require('../server/otp');
+const pwmod = require('../server/auth');
 
 let pass = 0, fails = [];
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'crt-test-'));
@@ -31,30 +31,57 @@ async function run(name, fn) {
     const data = ct.includes('json') ? await r.json() : await r.arrayBuffer();
     return { status: r.status, data };
   }
-  async function login(phone) {
-    db.prepare('DELETE FROM otps WHERE phone = ?').run(phone); // fresh code, outside the 1-minute resend limit
-    const o = await call('POST', '/api/auth/otp', { phone });
-    assert.strictEqual(o.status, 200, 'otp request failed: ' + JSON.stringify(o.data));
-    const v = await call('POST', '/api/auth/verify', { phone, code: o.data.devCode });
-    assert.strictEqual(v.status, 200, 'verify failed: ' + JSON.stringify(v.data));
+  const DEMO_PW = 'demo1234';
+  async function login(phone, password = DEMO_PW) {
+    const v = await call('POST', '/api/auth/login', { phone, password });
+    assert.strictEqual(v.status, 200, 'login failed: ' + JSON.stringify(v.data));
     return v.data.token;
   }
   const expectStatus = (r, s) => assert.strictEqual(r.status, s, `expected ${s} got ${r.status}: ${JSON.stringify(r.data).slice(0, 200)}`);
   const receiptDataUrl = 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, 'fixtures', 'receipt.png')).toString('base64');
 
+  console.log('Password storage');
+  await run('scrypt hashes verify and never store the plain password', () => {
+    const h = pwmod.hashPassword('correct horse');
+    assert.match(h, /^scrypt\$[0-9a-f]+\$[0-9a-f]+$/);
+    assert.ok(!h.includes('correct horse'));
+    assert.ok(pwmod.verifyPassword('correct horse', h));
+    assert.ok(!pwmod.verifyPassword('correct hors', h));
+    assert.ok(!pwmod.verifyPassword('anything', null));
+    assert.ok(!pwmod.validPassword('short'));
+    assert.ok(pwmod.validPassword('eight888'));
+  });
+  await run('databases from before password login get the column and lose the OTP table', () => {
+    const Database = require('better-sqlite3');
+    const f = path.join(tmp, 'old.db');
+    const old = new Database(f);
+    old.exec("CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT UNIQUE NOT NULL, role TEXT NOT NULL, pays INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, collector_id TEXT, bkash TEXT, join_period TEXT NOT NULL, created_at TEXT NOT NULL); CREATE TABLE otps (phone TEXT PRIMARY KEY, code TEXT, expires_at INTEGER, attempts INTEGER);");
+    old.close();
+    const { openDb } = require('../server/db');
+    const db2 = openDb(f);
+    assert.ok(db2.prepare('PRAGMA table_info(users)').all().some(c => c.name === 'password_hash'));
+    assert.strictEqual(db2.prepare("SELECT name FROM sqlite_master WHERE name = 'otps'").get(), undefined);
+    db2.close();
+  });
+
   console.log('Auth');
   await run('health endpoint responds', async () => {
     const h = await call('GET', '/api/health'); expectStatus(h, 200); assert.strictEqual(h.data.today, '2026-10');
   });
-  await run('unknown number is rejected', async () => {
-    expectStatus(await call('POST', '/api/auth/otp', { phone: '01999999999' }), 404);
+  await run('wrong password and unknown number give the same message', async () => {
+    const wrong = await call('POST', '/api/auth/login', { phone: '01711000001', password: 'nope-nope' });
+    const unknown = await call('POST', '/api/auth/login', { phone: '01799999998', password: DEMO_PW });
+    expectStatus(wrong, 401); expectStatus(unknown, 401);
+    assert.strictEqual(wrong.data.error, unknown.data.error);
   });
-  await run('wrong OTP is rejected', async () => {
-    await call('POST', '/api/auth/otp', { phone: '01711000001' });
-    expectStatus(await call('POST', '/api/auth/verify', { phone: '01711000001', code: '0000' }), 401);
+  await run('missing or malformed input is rejected', async () => {
+    expectStatus(await call('POST', '/api/auth/login', { phone: '123', password: DEMO_PW }), 400);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01711000001', password: '' }), 400);
   });
-  await run('a new code cannot be requested within a minute', async () => {
-    expectStatus(await call('POST', '/api/auth/otp', { phone: '01711000001' }), 429);
+  await run('five wrong passwords lock the number for 15 minutes, even for the right password', async () => {
+    for (let i = 0; i < 5; i++) expectStatus(await call('POST', '/api/auth/login', { phone: '01711000005', password: 'wrong-one' }), 401);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01711000005', password: 'wrong-one' }), 429);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01711000005', password: DEMO_PW }), 429);
   });
   await run('admin, collector and member can sign in', async () => {
     tokens.admin = await login('01711000001');
@@ -64,6 +91,13 @@ async function run(name, fn) {
     tokens.rahim = await login('01711000004');    // member u4 in group A, paid October
     tokens.nabil = await login('01711000009');    // member u9 in group B
     assert.ok(tokens.sabbir && tokens.admin);
+  });
+  await run('password hashes are never sent to the app', async () => {
+    const b = await call('GET', '/api/bootstrap', undefined, tokens.admin);
+    assert.ok(!JSON.stringify(b.data).includes('scrypt$'));
+    const d = db.prepare("SELECT password_hash FROM users WHERE phone = '01711000006'").get();
+    assert.match(d.password_hash, /^scrypt\$/);
+    assert.ok(!d.password_hash.includes(DEMO_PW));
   });
   await run('bootstrap needs a session', async () => {
     expectStatus(await call('GET', '/api/bootstrap'), 401);
@@ -119,9 +153,9 @@ async function run(name, fn) {
     expectStatus(await call('POST', '/api/ocr', { imageDataUrl: 'data:text/plain;base64,aGk=' }, tokens.sabbir), 400);
   });
   await run('collector adds members to own group only', async () => {
-    const a = await call('POST', '/api/members', { name: 'Test Member', phone: '01811000001', joinPeriod: '2026-10' }, tokens.tanvir);
+    const a = await call('POST', '/api/members', { name: 'Test Member', phone: '01811000001', joinPeriod: '2026-10', password: 'start-pass1' }, tokens.tanvir);
     expectStatus(a, 200); m1 = a.data.id;
-    const b = await call('POST', '/api/members', { name: 'Due Member', phone: '01811000002', joinPeriod: '2026-10' }, tokens.shakil);
+    const b = await call('POST', '/api/members', { name: 'Due Member', phone: '01811000002', joinPeriod: '2026-10', password: 'start-pass1' }, tokens.shakil);
     expectStatus(b, 200); m2 = b.data.id;
     const bs = await call('GET', '/api/bootstrap', undefined, tokens.tanvir);
     assert.strictEqual(bs.data.members.find(m => m.id === m1).collectorId, 'u2');
@@ -130,8 +164,50 @@ async function run(name, fn) {
   await run('member cannot add members', async () => {
     expectStatus(await call('POST', '/api/members', { name: 'X', phone: '01811000003' }, tokens.sabbir), 403);
   });
+  console.log('Passwords');
+  await run('adding a member needs a starting password of 8+ characters', async () => {
+    const base = { name: 'No Pass', phone: '01811000003', joinPeriod: '2026-10' };
+    expectStatus(await call('POST', '/api/members', base, tokens.tanvir), 400);
+    expectStatus(await call('POST', '/api/members', { ...base, password: 'short' }, tokens.tanvir), 400);
+  });
+  await run('member signs in with the starting password the collector set', async () => {
+    expectStatus(await call('POST', '/api/members', { name: 'Pass Member', phone: '01811000003', joinPeriod: '2026-10', password: 'start-pass1' }, tokens.tanvir), 200);
+    tokens.pass = await login('01811000003', 'start-pass1');
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01811000003', password: 'start-pass2' }), 401);
+  });
+  await run('member cannot reset passwords or edit members', async () => {
+    expectStatus(await call('PATCH', '/api/members/u6', { password: 'hijack-pass' }, tokens.sabbir), 403);
+  });
+  await run('collector cannot reset a password outside their group', async () => {
+    expectStatus(await call('PATCH', '/api/members/u9', { password: 'hijack-pass' }, tokens.tanvir), 403);
+    await login('01711000009');   // u9 still has the demo password
+  });
+  await run('member changes own password: wrong current password refused, still signed in', async () => {
+    expectStatus(await call('POST', '/api/auth/password', { current: 'bad-guess', password: 'new-pass-22' }, tokens.pass), 401);
+    expectStatus(await call('GET', '/api/bootstrap', undefined, tokens.pass), 200);
+  });
+  await run('new password must be 8+ characters and different from the old one', async () => {
+    expectStatus(await call('POST', '/api/auth/password', { current: 'start-pass1', password: 'short' }, tokens.pass), 400);
+    expectStatus(await call('POST', '/api/auth/password', { current: 'start-pass1', password: 'start-pass1' }, tokens.pass), 400);
+  });
+  await run('changing password signs out other devices but not this one', async () => {
+    const other = await login('01811000003', 'start-pass1');
+    expectStatus(await call('POST', '/api/auth/password', { current: 'start-pass1', password: 'new-pass-22' }, tokens.pass), 200);
+    expectStatus(await call('GET', '/api/bootstrap', undefined, tokens.pass), 200);
+    expectStatus(await call('GET', '/api/bootstrap', undefined, other), 401);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01811000003', password: 'start-pass1' }), 401);
+    await login('01811000003', 'new-pass-22');
+  });
+  await run('admin resets a member password: old password fails and the member is signed out', async () => {
+    const id = db.prepare("SELECT id FROM users WHERE phone = '01811000003'").get().id;
+    expectStatus(await call('PATCH', `/api/members/${id}`, { password: 'reset-pass3' }, tokens.tanvir), 200);
+    expectStatus(await call('GET', '/api/bootstrap', undefined, tokens.pass), 401);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01811000003', password: 'new-pass-22' }), 401);
+    await login('01811000003', 'reset-pass3');
+    expectStatus(await call('PATCH', `/api/members/${id}`, { password: 'x' }, tokens.tanvir), 400);
+  });
   await run('dup TrxID: Test Member submits a screenshot reusing a pending TrxID', async () => {
-    const m1t = await login('01811000001');
+    const m1t = await login('01811000001', 'start-pass1');
     tokens.m1 = m1t;
     const r = await call('POST', '/api/requests', { kind: 'screenshot', period: '2026-10', amount: 200, trx: 'BK7Q2M9X1A', imageDataUrl: receiptDataUrl }, m1t);
     expectStatus(r, 200);
@@ -146,7 +222,7 @@ async function run(name, fn) {
     assert.ok(after.data.notifications.some(n => n.kind === 'bad'), 'member notified of rejection');
   });
   await run('Due Member submits a clean screenshot and collector confirms', async () => {
-    const m2t = await login('01811000002');
+    const m2t = await login('01811000002', 'start-pass1');
     tokens.m2 = m2t;
     const r = await call('POST', '/api/requests', { kind: 'screenshot', period: '2026-10', amount: 200, trx: '8N7A2K9X1B', receiver: '01711000002', paidText: ocrRes.paidText, ocr: true, imageDataUrl: receiptDataUrl }, m2t);
     expectStatus(r, 200);
@@ -262,13 +338,13 @@ async function run(name, fn) {
     assert.ok(!b.data.members.find(m => m.id === m1), 'inactive member hidden from roster');
     const h = db.prepare('SELECT COUNT(*) c FROM payments WHERE user_id = ?').get(m1).c;
     assert.strictEqual(h, 1, 'payment history kept');
-    expectStatus(await call('POST', '/api/auth/otp', { phone: '01811000001' }), 404);
+    expectStatus(await call('POST', '/api/auth/login', { phone: '01811000001', password: 'start-pass1' }), 401);
   });
 
   console.log('Board privacy and logout');
   await run('admin board: all payers have a row for every month', async () => {
     const b = await call('GET', '/api/bootstrap', undefined, tokens.admin);
-    assert.strictEqual(Object.keys(b.data.board).length, 11, '10 seeded payers + 1 added (Test Member removed)');
+    assert.strictEqual(Object.keys(b.data.board).length, 12, '10 seeded payers + Due Member + Pass Member (Test Member removed)');
     assert.ok(b.data.periods.includes('2026-10') && b.data.periods[0] === '2026-01');
   });
   await run('logout invalidates the session', async () => {
@@ -287,8 +363,9 @@ async function run(name, fn) {
     const prodDir = fs.mkdtempSync(path.join(os.tmpdir(), 'crt-prod-'));
     process.env.ADMIN_PHONE = '01700000001';
     process.env.ADMIN_NAME = 'Test Admin';
+    process.env.ADMIN_PASSWORD = 'admin-pass-1';
     const prod = createApp({ dbPath: path.join(prodDir, 'prod.db'), uploadsDir: path.join(prodDir, 'up'), demo: false });
-    delete process.env.ADMIN_PHONE; delete process.env.ADMIN_NAME;
+    delete process.env.ADMIN_PHONE; delete process.env.ADMIN_NAME; delete process.env.ADMIN_PASSWORD;
     const ps = await new Promise(r => { const x = prod.app.listen(0, '127.0.0.1', () => r(x)); });
     const pbase = `http://127.0.0.1:${ps.address().port}`;
     const pcall = async (method, url, body) => {
@@ -299,74 +376,44 @@ async function run(name, fn) {
       const d = await pcall('GET', '/api/demo-accounts'); assert.deepStrictEqual(d.data.accounts, []);
       const h = await pcall('GET', '/api/health'); assert.strictEqual(h.data.demo, false);
     });
-    await run('production: first admin created from ADMIN_PHONE, no demo members', async () => {
+    await run('production: first admin created from ADMIN_PHONE and ADMIN_PASSWORD, no demo members', async () => {
       const count = prod.db.prepare('SELECT COUNT(*) c FROM users').get().c;
       assert.strictEqual(count, 1, 'only the admin should exist');
-      const u = prod.db.prepare("SELECT name, phone, role FROM users").get();
-      assert.deepStrictEqual(u, { name: 'Test Admin', phone: '01700000001', role: 'admin' });
+      const u = prod.db.prepare('SELECT name, phone, role, password_hash FROM users').get();
+      assert.deepStrictEqual([u.name, u.phone, u.role], ['Test Admin', '01700000001', 'admin']);
+      assert.match(u.password_hash, /^scrypt\$/);
       assert.strictEqual(prod.db.prepare('SELECT COUNT(*) c FROM payments').get().c, 0);
     });
-    await run('production: sign-in refused (503) until WhatsApp OTP is configured', async () => {
-      const r = await pcall('POST', '/api/auth/otp', { phone: '01700000001' });
-      assert.strictEqual(r.status, 503);
-      assert.match(r.data.error, /WhatsApp OTP is not configured/);
-      assert.strictEqual(prod.db.prepare('SELECT COUNT(*) c FROM otps').get().c, 0, 'no OTP stored without SMS');
+    await run('production: admin signs in with ADMIN_PASSWORD only', async () => {
+      expectStatus(await pcall('POST', '/api/auth/login', { phone: '01700000001', password: 'admin-pass-1' }), 200);
+      expectStatus(await pcall('POST', '/api/auth/login', { phone: '01700000001', password: DEMO_PW }), 401);
     });
-    await run('production: OTP code is never returned in the response', async () => {
-      const r = await pcall('POST', '/api/auth/otp', { phone: '01700000001' });
-      assert.ok(!('devCode' in (r.data || {})));
+    await run('production: no demo accounts are offered and the health check says demo:false', async () => {
+      const d = await pcall('GET', '/api/demo-accounts'); assert.deepStrictEqual(d.data.accounts, []);
+      assert.strictEqual(d.data.password, undefined, 'no demo password exposed');
+      const h = await pcall('GET', '/api/health'); assert.strictEqual(h.data.demo, false);
+    });
+    await run('production: startup refuses ADMIN_PHONE without a valid ADMIN_PASSWORD', async () => {
+      process.env.ADMIN_PHONE = '01700000009';
+      delete process.env.ADMIN_PASSWORD;
+      let threw = false;
+      try { createApp({ dbPath: path.join(prodDir, 'nopw.db'), uploadsDir: path.join(prodDir, 'up3'), demo: false }); }
+      catch (e) { threw = /ADMIN_PASSWORD/.test(e.message); }
+      process.env.ADMIN_PASSWORD = 'short';
+      let threwShort = false;
+      try { createApp({ dbPath: path.join(prodDir, 'nopw.db'), uploadsDir: path.join(prodDir, 'up3'), demo: false }); }
+      catch (e) { threwShort = /ADMIN_PASSWORD/.test(e.message); }
+      delete process.env.ADMIN_PHONE; delete process.env.ADMIN_PASSWORD;
+      assert.ok(threw && threwShort, 'expected startup error for missing and short ADMIN_PASSWORD');
     });
     await run('production: invalid ADMIN_PHONE is rejected at startup', async () => {
       process.env.ADMIN_PHONE = 'abc';
+      process.env.ADMIN_PASSWORD = 'admin-pass-1';
       let threw = false;
       try { createApp({ dbPath: path.join(prodDir, 'bad.db'), uploadsDir: path.join(prodDir, 'up2'), demo: false }); }
       catch (e) { threw = /ADMIN_PHONE/.test(e.message); }
-      delete process.env.ADMIN_PHONE;
+      delete process.env.ADMIN_PHONE; delete process.env.ADMIN_PASSWORD;
       assert.ok(threw, 'expected startup error');
-    });
-    await run('otp: WhatsApp is ready only with token, phone number ID and template', async () => {
-      const keys = ['OTP_PROVIDER','WHATSAPP_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE'];
-      const saved = Object.fromEntries(keys.map(k => [k, process.env[k]]));
-      const restore = () => keys.forEach(k => saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k]));
-      try {
-        keys.forEach(k => delete process.env[k]);
-        assert.strictEqual(sms.otpReady(), false);
-        process.env.WHATSAPP_TOKEN = 't'; process.env.WHATSAPP_PHONE_NUMBER_ID = '123'; process.env.WHATSAPP_OTP_TEMPLATE = 'club_login_otp';
-        assert.strictEqual(sms.otpReady(), true, 'whatsapp is the default provider');
-        process.env.OTP_PROVIDER = 'unknown';
-        assert.strictEqual(sms.otpReady(), false);
-        assert.strictEqual(sms.toDigits('01711000001'), '8801711000001');
-      } finally { restore(); }
-    });
-    await run('otp: WhatsApp request uses the authentication template with the code', async () => {
-      const keys = ['WHATSAPP_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE','WHATSAPP_OTP_LANGUAGE'];
-      const saved = Object.fromEntries(keys.map(k => [k, process.env[k]]));
-      const realFetch = global.fetch;
-      let seen = null;
-      try {
-        process.env.WHATSAPP_TOKEN = 'test-token'; process.env.WHATSAPP_PHONE_NUMBER_ID = '555000111';
-        process.env.WHATSAPP_OTP_TEMPLATE = 'club_login_otp'; process.env.WHATSAPP_OTP_LANGUAGE = 'en';
-        global.fetch = async (url, opts) => { seen = { url, opts, body: JSON.parse(opts.body) }; return new Response(JSON.stringify({ messages: [{ id: 'wamid.TEST' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }); };
-        const id = await sms.sendOtp('01711000001', '4821');
-        assert.strictEqual(id, 'wamid.TEST');
-        assert.match(seen.url, /^https:\/\/graph\.facebook\.com\/v\d+\.\d+\/555000111\/messages$/);
-        assert.strictEqual(seen.opts.headers.Authorization, 'Bearer test-token');
-        assert.strictEqual(seen.body.messaging_product, 'whatsapp');
-        assert.strictEqual(seen.body.to, '8801711000001');
-        assert.strictEqual(seen.body.type, 'template');
-        assert.strictEqual(seen.body.template.name, 'club_login_otp');
-        assert.deepStrictEqual(seen.body.template.language, { code: 'en' });
-        const body = seen.body.template.components[0].parameters[0].text;
-        assert.strictEqual(body, '4821', 'code must be in the body parameter');
-      } finally { global.fetch = realFetch; keys.forEach(k => saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k])); }
-    });
-    await run('otp: WhatsApp errors are surfaced, not swallowed', async () => {
-      const realFetch = global.fetch;
-      process.env.WHATSAPP_TOKEN = 'x'; process.env.WHATSAPP_PHONE_NUMBER_ID = '1'; process.env.WHATSAPP_OTP_TEMPLATE = 't';
-      try {
-        global.fetch = async () => new Response(JSON.stringify({ error: { message: 'Recipient not on WhatsApp' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-        await assert.rejects(() => sms.sendOtp('01711000001', '1111'), /Recipient not on WhatsApp/);
-      } finally { global.fetch = realFetch; delete process.env.WHATSAPP_TOKEN; delete process.env.WHATSAPP_PHONE_NUMBER_ID; delete process.env.WHATSAPP_OTP_TEMPLATE; }
     });
     ps.close();
     fs.rmSync(prodDir, { recursive: true, force: true });

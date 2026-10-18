@@ -4,10 +4,11 @@ const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const { openDb, seed, bootstrapAdmin } = require('./db');
+const pw = require('./auth');
 const ocr = require('./ocr');
-const otp = require('./otp');
 
 const ROOT = path.join(__dirname, '..');
+const DEMO_PASSWORD = 'demo1234'; // demo accounts only; never used when DEMO=0
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data'); // Render persistent disk mount in production
 const PUBLIC = path.join(ROOT, 'public');
 const YEAR_START = '2026-01';
@@ -57,10 +58,13 @@ function createApp(opts = {}) {
   const db = openDb(dbPath);
   if (demo) {
     seed(db, uploadsDir);
+    db.prepare('UPDATE users SET password_hash = ? WHERE password_hash IS NULL').run(pw.hashPassword(DEMO_PASSWORD));
   } else if (process.env.ADMIN_PHONE) {
     const adminPhone = normPhone(process.env.ADMIN_PHONE);
     if (!validPhone(adminPhone)) throw new Error('ADMIN_PHONE must be an 11-digit mobile number, e.g. 01XXXXXXXXX');
-    bootstrapAdmin(db, adminPhone, (process.env.ADMIN_NAME || 'Club Admin').slice(0, 60));
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+    if (!pw.validPassword(adminPassword)) throw new Error(`ADMIN_PASSWORD must be ${pw.MIN_PASSWORD} to 128 characters. Set it in the Render environment.`);
+    bootstrapAdmin(db, adminPhone, (process.env.ADMIN_NAME || 'Club Admin').slice(0, 60), pw.hashPassword(adminPassword));
   } else {
     console.warn('[setup] No users yet. Set ADMIN_PHONE (and optionally ADMIN_NAME) to create the first admin.');
   }
@@ -183,49 +187,36 @@ function createApp(opts = {}) {
     const pick = (role, pref) => db.prepare('SELECT name, phone FROM users WHERE role = ? AND active = 1 ORDER BY (name = ?) DESC, name LIMIT 1').get(role, pref);
     const list = [['Admin', 'admin', ''], ['Collector', 'collector', ''], ['Member', 'member', 'Sabbir Ahmed']]
       .map(([label, role, pref]) => ({ label, phone: (pick(role, pref) || {}).phone })).filter(a => a.phone);
-    res.json({ accounts: list });
+    res.json({ accounts: list, password: DEMO_PASSWORD });
   }));
 
-  // --- auth ---
-  app.post('/api/auth/otp', H(async (req, res) => {
-    const phone = normPhone(req.body.phone);
+  // --- auth: mobile number + password ---
+  app.post('/api/auth/login', H((req, res) => {
+    const phone = normPhone(req.body.phone), password = String(req.body.password || '');
     if (!validPhone(phone)) fail(400, 'Enter a valid 11-digit mobile number');
-    // Outside demo mode a real OTP provider (WhatsApp) is required. Without one, nobody can log in.
-    if (!demo && !otp.otpReady()) fail(503, 'Sign-in is not available yet: WhatsApp OTP is not configured.');
-    const u = db.prepare('SELECT id FROM users WHERE phone = ? AND active = 1').get(phone);
-    if (!u) fail(404, 'This number is not registered. Ask your admin or collector to add you.');
-    // Each code costs money to send: allow one new code per phone per minute.
-    const prev = db.prepare('SELECT expires_at FROM otps WHERE phone = ?').get(phone);
-    if (prev && prev.expires_at - 5 * 60 * 1000 > Date.now() - 60 * 1000) fail(429, 'Please wait a minute before asking for a new code.');
-    const code = String(crypto.randomInt(1000, 10000));
-    db.prepare('INSERT OR REPLACE INTO otps (phone,code,expires_at,attempts) VALUES (?,?,?,0)').run(phone, code, Date.now() + 5 * 60 * 1000);
-    if (demo) {
-      // Demo mode only: the code is returned so the flow can be tested without WhatsApp.
-      console.log(`[otp] demo code for ${phone}: ${code}`);
-      return res.json({ ok: true, devCode: code });
-    }
-    try {
-      await otp.sendOtp(phone, code);
-    } catch (e) {
-      db.prepare('DELETE FROM otps WHERE phone = ?').run(phone);
-      console.error('[otp] send failed:', e.message);
-      fail(502, 'Could not send the WhatsApp code. Check that this number uses WhatsApp, then try again.');
-    }
-    res.json({ ok: true });
-  }));
-
-  app.post('/api/auth/verify', H((req, res) => {
-    const phone = normPhone(req.body.phone), code = String(req.body.code || '').trim();
-    const o = db.prepare('SELECT * FROM otps WHERE phone = ?').get(phone);
-    if (!o || o.expires_at < Date.now()) fail(400, 'OTP expired. Request a new one.');
-    if (o.attempts >= 5) fail(429, 'Too many wrong attempts. Request a new OTP.');
-    if (o.code !== code) { db.prepare('UPDATE otps SET attempts = attempts + 1 WHERE phone = ?').run(phone); fail(401, 'Wrong OTP'); }
-    db.prepare('DELETE FROM otps WHERE phone = ?').run(phone);
+    if (!password) fail(400, 'Enter your password');
+    if (pw.isLocked(phone)) fail(429, 'Too many wrong passwords. Try again in 15 minutes.');
     const u = db.prepare('SELECT * FROM users WHERE phone = ? AND active = 1').get(phone);
-    if (!u) fail(404, 'This number is not registered.');
+    // Same message for an unknown number and a wrong password, so the login does not reveal who is a member.
+    if (!u || !pw.verifyPassword(password, u.password_hash)) {
+      pw.recordFailure(phone);
+      fail(401, 'Wrong mobile number or password');
+    }
+    pw.clearFailures(phone);
     const token = rid(24);
     db.prepare('INSERT INTO sessions (token,user_id,created_at) VALUES (?,?,?)').run(token, u.id, nowIso());
     res.json({ token, user: publicMe(u) });
+  }));
+
+  app.post('/api/auth/password', auth, H((req, res) => {
+    const current = String(req.body.current || ''), next = String(req.body.password || '');
+    if (!pw.verifyPassword(current, req.user.password_hash)) fail(401, 'Current password is wrong');
+    if (!pw.validPassword(next)) fail(400, `New password must be ${pw.MIN_PASSWORD} to 128 characters`);
+    if (next === current) fail(400, 'Choose a different password');
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(pw.hashPassword(next), req.user.id);
+    // Sign out other devices; this one stays signed in.
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token <> ?').run(req.user.id, req.token);
+    res.json({ ok: true });
   }));
 
   app.post('/api/auth/logout', auth, H((req, res) => {
@@ -277,6 +268,8 @@ function createApp(opts = {}) {
     const name = String(b.name || '').trim().slice(0, 60), phone = normPhone(b.phone);
     if (!name) fail(400, 'Enter the member name');
     if (!validPhone(phone)) fail(400, 'Enter a valid 11-digit mobile number');
+    const password = String(b.password || '');
+    if (!pw.validPassword(password)) fail(400, `Set a password of ${pw.MIN_PASSWORD} or more characters for this member`);
     const role = me.role === 'admin' ? (['member', 'collector', 'admin'].includes(b.role) ? b.role : 'member') : 'member';
     let collectorId = me.role === 'collector' ? me.id : (b.collectorId || null);
     if (role === 'member') {
@@ -287,14 +280,15 @@ function createApp(opts = {}) {
     const existing = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
     if (existing && existing.active) fail(409, 'This number already belongs to a member');
     if (existing) {
-      db.prepare('UPDATE users SET name=?, role=?, pays=?, active=1, collector_id=?, join_period=? WHERE id=?')
-        .run(name, role, role === 'admin' ? 0 : 1, collectorId, joinPeriod, existing.id);
+      db.prepare('UPDATE users SET name=?, role=?, pays=?, active=1, collector_id=?, join_period=?, password_hash=? WHERE id=?')
+        .run(name, role, role === 'admin' ? 0 : 1, collectorId, joinPeriod, pw.hashPassword(password), existing.id);
+      db.prepare('DELETE FROM sessions WHERE user_id = ?').run(existing.id);
       return res.json({ ok: true, id: existing.id, reactivated: true });
     }
     const id = 'u' + rid(4);
-    db.prepare('INSERT INTO users (id,name,phone,role,pays,active,collector_id,bkash,join_period,created_at) VALUES (?,?,?,?,?,1,?,?,?,?)')
-      .run(id, name, phone, role, role === 'admin' ? 0 : 1, collectorId, role === 'collector' ? phone : null, joinPeriod, nowIso());
-    notifyUser(id, 'Welcome to Club Rent Tracker', 'Sign in with your mobile number. You will get an OTP each time.', 'info');
+    db.prepare('INSERT INTO users (id,name,phone,role,pays,active,collector_id,bkash,join_period,created_at,password_hash) VALUES (?,?,?,?,?,1,?,?,?,?,?)')
+      .run(id, name, phone, role, role === 'admin' ? 0 : 1, collectorId, role === 'collector' ? phone : null, joinPeriod, nowIso(), pw.hashPassword(password));
+    notifyUser(id, 'Welcome to Club Rent Tracker', 'Sign in with your mobile number and the password your admin or collector gave you. You can change it in Settings.', 'info');
     res.json({ ok: true, id });
   }));
 
@@ -318,6 +312,11 @@ function createApp(opts = {}) {
       const c = getUser(b.collectorId); if (!c || c.role !== 'collector') fail(400, 'Pick a collector');
       set.collector_id = c.id;
     }
+    if (b.password !== undefined) {
+      const np = String(b.password);
+      if (!pw.validPassword(np)) fail(400, `Password must be ${pw.MIN_PASSWORD} to 128 characters`);
+      set.password_hash = pw.hashPassword(np);
+    }
     if (b.active !== undefined) {
       if (t.id === me.id && !b.active) fail(400, "You can't remove yourself");
       set.active = b.active ? 1 : 0;
@@ -327,6 +326,7 @@ function createApp(opts = {}) {
     if (finalRole === 'member' && !finalCollector && set.active !== 0) fail(400, 'Assign a collector');
     const keys = Object.keys(set);
     if (keys.length) db.prepare(`UPDATE users SET ${keys.map(k => `${k} = ?`).join(', ')} WHERE id = ?`).run(...keys.map(k => set[k]), t.id);
+    if (set.password_hash && t.id !== me.id) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(t.id); // reset signs the member out
     if (set.role && set.role !== t.role) notifyUser(t.id, 'Your role was updated', `You are now a ${set.role}.`, 'info');
     res.json({ ok: true });
   }));
@@ -580,7 +580,7 @@ if (require.main === module) {
   const port = +process.env.PORT || 3000;
   const demo = process.env.DEMO !== '0';
   const { app } = createApp();
-  if (demo) console.warn('[security] DEMO mode is ON: OTP codes are returned to the app. Set DEMO=0 before any public deployment.');
+  if (demo) console.warn('[security] DEMO mode is ON: demo accounts use the password "demo1234". Set DEMO=0 before any public deployment.');
   app.listen(port, '0.0.0.0', () => console.log(`Club Rent Tracker running on http://0.0.0.0:${port} (demo=${demo})`));
 }
 

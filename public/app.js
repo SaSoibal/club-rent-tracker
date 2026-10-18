@@ -24,7 +24,7 @@ const S = {
   apiBase: (window.CRT_API_BASE || localStorage.getItem('crt_api') || '').replace(/\/$/, ''),
   token: localStorage.getItem('crt_token'),
   boot: null, tab: 'home', month: null,
-  demo: [], login: { step: 'phone', phone: '', devCode: null },
+  demo: [], demoPassword: '', login: { phone: '' },
   shots: {}, pendingShot: null, busy: false
 };
 const app = document.getElementById('app');
@@ -44,7 +44,7 @@ async function api(method, url, body) {
   if (S.token) headers.Authorization = 'Bearer ' + S.token;
   const r = await fetch(apiUrl(url), { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
   let data = null; try { data = await r.json(); } catch (e) { /* not json */ }
-  if (r.status === 401 && S.token) { signOutLocal(); throw new AuthError('Please sign in again'); }
+  if (r.status === 401 && S.token && !url.startsWith('/api/auth/')) { signOutLocal(); throw new AuthError('Please sign in again'); }
   if (!r.ok) throw new Error((data && data.error) || ('Request failed (' + r.status + ')'));
   return data;
 }
@@ -57,7 +57,7 @@ async function refresh() { try { await loadBoot(); } catch (e) { if (!(e instanc
 function signOutLocal() {
   S.token = null; S.boot = null; localStorage.removeItem('crt_token'); S.shots = {};
   Object.values(S.shots).forEach(u => URL.revokeObjectURL && u && URL.revokeObjectURL(u));
-  S.login = { step: 'phone', phone: '', devCode: null };
+  S.login = { phone: '' };
   render();
 }
 const isStaff = () => ['admin', 'collector'].includes(S.boot.me.role);
@@ -101,31 +101,19 @@ function pendingCount() { return isStaff() ? S.boot.requests.filter(r => r.statu
 function loginHtml() {
   const L = S.login;
   const demo = S.demo.length ? `<div class="chips">${S.demo.map(a => `<button data-act="demo" data-phone="${esc(a.phone)}">${esc(a.label)} · ${esc(a.phone)}</button>`).join('')}</div>` : '';
-  if (L.step === 'otp') {
-    return `<div class="login">
-      <div class="brand">💸 Club Rent Tracker</div>
-      <div class="card">
-        <h3>Enter the OTP</h3>
-        <p class="muted small">We sent a 6-digit code to <b>${esc(L.phone)}</b> on WhatsApp. It expires in 5 minutes.</p>
-        ${L.devCode ? `<div class="warn">Demo mode: WhatsApp is not connected in this build. Your code is <b>${esc(L.devCode)}</b>.</div>` : ''}
-        <form data-form="otp" class="stack">
-          <label>OTP code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" minlength="4" required autofocus></label>
-          <div class="actions"><button class="primary" type="submit">Verify and sign in</button>
-          <button type="button" class="ghost" data-act="changeNumber">Change number</button></div>
-        </form>
-      </div></div>`;
-  }
   return `<div class="login">
     <div class="brand">💸 Club Rent Tracker</div>
     <p class="muted">Monthly share <b>৳200</b> · pay by cash or bKash · see who has paid.</p>
     <div class="card">
-      <h3>Sign in with your mobile</h3>
-      <form data-form="phone" class="stack">
+      <h3>Sign in</h3>
+      <form data-form="login" class="stack">
         ${isNative() ? `<label>Server address<input name="server" type="url" inputmode="url" placeholder="https://your-server or http://192.168.1.10:3000" value="${esc(S.apiBase)}" required></label>` : ''}
-        <label>Mobile number<input name="phone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX" value="${esc(L.phone)}" required></label>
-        <div class="actions"><button class="primary" type="submit">Send OTP</button></div>
+        <label>Mobile number<input name="phone" type="tel" inputmode="tel" autocomplete="username" placeholder="01XXXXXXXXX" value="${esc(L.phone)}" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <div class="actions"><button class="primary" type="submit">Sign in</button></div>
       </form>
-      ${demo ? `<p class="hint">Demo accounts (dev mode):</p>${demo}` : ''}
+      ${demo ? `<p class="hint">Demo accounts (password ${esc(S.demoPassword)}):</p>${demo}` : ''}
+      <p class="hint">No password yet? Ask your admin or collector.</p>
     </div>
     <p class="hint">You stay signed in on this device until you log out.</p>
   </div>`;
@@ -166,7 +154,8 @@ function vHome() {
   const b = S.boot, me = b.me, cur = curPeriod();
   let h = `<div class="card hero"><div class="muted small">Signed in as</div><h2>${esc(me.name)}</h2>
     <span class="pill">${esc(me.role)}</span> <span class="muted small">${esc(me.phone || '')}</span>
-    ${me.pays && me.payee ? `<div class="hint">Your payments go to <b>${esc(me.payee.name)}</b> · bKash ${esc(me.payee.no)}</div>` : ''}</div>`;
+    ${me.pays && me.payee ? `<div class="hint">Your payments go to <b>${esc(me.payee.name)}</b> · bKash ${esc(me.payee.no)}</div>` : ''}
+    <div class="actions"><button data-act="changePassword">Change password</button></div></div>`;
 
   if (isAdmin()) {
     const payers = b.members.filter(m => m.pays);
@@ -360,10 +349,11 @@ function vMembers() {
   let h = `<div class="sec-title">Add member</div><div class="card"><form data-form="addMember" class="stack">
     <div class="grid2"><label>Name<input name="name" required maxlength="60"></label>
     <label>Mobile<input name="phone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX" required></label></div>
+    <label>Starting password (8 or more characters)<input name="password" type="text" minlength="8" maxlength="128" autocomplete="off" required></label>
     <div class="grid2">${isAdmin() ? `<label>Role<select name="role"><option value="member">Member</option><option value="collector">Collector</option></select></label>` : '<div></div>'}
     ${isAdmin() ? `<label>Collector (for members)<select name="collectorId">${collectors.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>` : '<div></div>'}</div>
     <div class="actions"><button class="primary" type="submit">Add</button></div>
-    <p class="hint">New members sign in with this number. They start paying from the current month.</p></form></div>`;
+    <p class="hint">New members sign in with this number and password. Give them the password and ask them to change it in Settings. They start paying from the current month.</p></form></div>`;
   h += `<div class="sec-title">${isAdmin() ? 'All members' : 'My group'} (${list.length})</div><div class="card list">`;
   for (const m of list) {
     const coll = b.members.find(x => x.id === m.collectorId);
@@ -450,8 +440,12 @@ const ACTS = {
     signOutLocal(); toast('Signed out');
   },
   month: d => { S.month = d.p; render(); },
-  demo: d => sendOtp(d.phone),
-  changeNumber: () => { S.login.step = 'phone'; render(); },
+  demo: async d => { await signIn(d.phone, S.demoPassword); },
+  changePassword: () => openModal('Change password', `<form data-form="changePassword" class="stack">
+      <label>Current password<input name="current" type="password" autocomplete="current-password" required></label>
+      <label>New password (8 or more characters)<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+      <div class="actions"><button class="primary" type="submit">Change password</button></div>
+      <p class="hint">Your other devices will be signed out.</p></form>`),
   close: () => closeModal(),
   bgClose: (d, el, e) => { if (e.target === el) closeModal(); },
   markRead: async () => { await api('POST', '/api/notifications/read', {}); await refresh(); },
@@ -547,6 +541,7 @@ const ACTS = {
     openModal(`Edit ${m.name}`, `<form data-form="editMember" class="stack"><input type="hidden" name="id" value="${m.id}">
       <label>Name<input name="name" value="${esc(m.name)}" required maxlength="60"></label>
       ${m.phone !== undefined ? `<label>Mobile<input name="phone" type="tel" value="${esc(m.phone)}" required></label>` : ''}
+      <label>New password (leave blank to keep the current one)<input name="password" type="text" minlength="8" maxlength="128" autocomplete="off"></label>
       ${isAdmin() ? `<label>Role<select name="role">${['member', 'collector', 'admin'].map(r => `<option ${r === m.role ? 'selected' : ''}>${r}</option>`).join('')}</select></label>` : ''}
       <div class="actions"><button class="primary" type="submit">Save changes</button></div></form>`);
   },
@@ -579,14 +574,15 @@ async function shotUrl(id) {
 }
 
 /* ---------- forms ---------- */
-async function sendOtp(phone) {
-  const r = await api('POST', '/api/auth/otp', { phone });
-  S.login = { step: 'otp', phone, devCode: r.devCode || null };
-  render();
+async function signIn(phone, password) {
+  const r = await api('POST', '/api/auth/login', { phone, password });
+  S.token = r.token; localStorage.setItem('crt_token', r.token);
+  S.login = { phone: '' };
+  await loadBoot(); toast('Signed in', 'ok');
 }
 const FORMS = {
-  phone: async f => {
-    const phone = f.elements.phone.value.trim();
+  login: async f => {
+    const phone = f.elements.phone.value.trim(), password = f.elements.password.value;
     if (isNative()) {
       const base = (f.elements.server ? f.elements.server.value : S.apiBase).trim().replace(/\/$/, '');
       // https for a public server; plain http only for a private/local network address (testing on Wi-Fi).
@@ -594,13 +590,12 @@ const FORMS = {
       if (!/^https:\/\/[^ ]+$/.test(base) && !privateHttp) throw new Error('Use https://your-server, or a local address such as http://192.168.1.10:3000');
       S.apiBase = base; localStorage.setItem('crt_api', base);
     }
-    await sendOtp(phone);
+    S.login.phone = phone;
+    await signIn(phone, password);
   },
-  otp: async f => {
-    const r = await api('POST', '/api/auth/verify', { phone: S.login.phone, code: f.elements.code.value.trim() });
-    S.token = r.token; localStorage.setItem('crt_token', r.token);
-    S.login = { step: 'phone', phone: '', devCode: null };
-    await loadBoot(); toast('Signed in', 'ok');
+  changePassword: async f => {
+    await api('POST', '/api/auth/password', { current: f.elements.current.value, password: f.elements.password.value });
+    closeModal(); toast('Password changed. Other devices were signed out.', 'ok');
   },
   shot: async f => {
     if (!S.pendingShot) throw new Error('Upload the screenshot first');
@@ -641,7 +636,7 @@ const FORMS = {
     toast('Request rejected', 'ok'); await refresh();
   },
   addMember: async f => {
-    const body = { name: f.elements.name.value.trim(), phone: f.elements.phone.value.trim() };
+    const body = { name: f.elements.name.value.trim(), phone: f.elements.phone.value.trim(), password: f.elements.password.value };
     if (isAdmin()) { body.role = f.elements.role.value; body.collectorId = f.elements.collectorId.value; }
     await api('POST', '/api/members', body);
     toast('Member added', 'ok'); await refresh();
@@ -650,6 +645,7 @@ const FORMS = {
     const body = { name: f.elements.name.value.trim() };
     if (f.elements.phone) body.phone = f.elements.phone.value.trim();
     if (f.elements.role) body.role = f.elements.role.value;
+    if (f.elements.password.value) body.password = f.elements.password.value;
     await api('PATCH', '/api/members/' + f.elements.id.value, body);
     closeModal(); toast('Saved', 'ok'); await refresh();
   },
@@ -762,7 +758,7 @@ document.addEventListener('change', async e => {
 
 /* ---------- boot ---------- */
 (async function init() {
-  try { const d = await api('GET', '/api/demo-accounts'); S.demo = d.accounts || []; } catch (e) { S.demo = []; }
+  try { const d = await api('GET', '/api/demo-accounts'); S.demo = d.accounts || []; S.demoPassword = d.password || ''; } catch (e) { S.demo = []; }
   if (S.token) {
     try { await loadBoot(); return; }
     catch (e) { S.token = null; localStorage.removeItem('crt_token'); }

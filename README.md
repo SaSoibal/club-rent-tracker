@@ -7,63 +7,47 @@ A mobile-first web app for a friends' club with a ৳200 monthly share. Members 
 ```bash
 npm install
 npm start            # http://localhost:3000  (binds 0.0.0.0; set PORT to change)
-npm test             # 40 API tests against a temporary database
+npm test             # API tests against a temporary database
 ```
 
 Requires Node.js 18 or newer (developed on Node 20).
 
+## Sign-in
+
+Everyone signs in with **mobile number + password**. There is no SMS or WhatsApp code.
+
+- The admin or a collector adds a member and sets that member's starting password (8 or more characters). They give it to the member.
+- Members change their password under **Settings → Change password**. This signs out their other devices.
+- Admins and collectors can reset a member's password from **Members → Edit**. The member is signed out everywhere.
+- After 5 wrong passwords for one number, that number is blocked for 15 minutes.
+- Sessions last until the user taps **Log out**.
+- Passwords are stored as salted scrypt hashes, never in plain text.
+
 ## Deploy the backend on Render
 
-The backend is one Node web service. The Blueprint file is `render.yaml`. It is set to the **free plan**, which means:
+The backend is one Node web service. The Blueprint file is `render.yaml`. It uses the **free plan**, which means:
 
 > **Data loss warning:** the free plan has no persistent disk. The database (members, payments, requests) and uploaded screenshots are erased on every restart, redeploy, or sleep (after 15 idle minutes). Use it to try the app, not to keep real club records. For real data, switch to `starter` and uncomment the `disk` block in `render.yaml` (about $7.25/month). No code change is needed.
 
 **Steps**
-1. Push this folder to a GitHub repository (private is fine). A local commit is already prepared:
-   ```bash
-   git remote add origin https://github.com/YOUR-USER/club-rent-tracker.git
-   git push -u origin main
-   ```
+1. Push this folder to a GitHub repository (private is fine).
 2. In Render, choose **New → Blueprint**, connect the repository, and apply `render.yaml`.
 3. In the service's **Environment** tab, set these values (they are not stored in Git):
    - `ADMIN_PHONE`: the admin's mobile number, e.g. `01XXXXXXXXX`. This creates the first admin when the database is empty.
-   - `WHATSAPP_TOKEN`: the Meta access token (see WhatsApp setup below).
-   - `WHATSAPP_PHONE_NUMBER_ID`: the ID of the WhatsApp Business phone number that sends the codes.
+   - `ADMIN_PASSWORD`: the admin's first password, 8 or more characters. Change it after the first sign-in.
 4. Wait for the deploy to finish. Check `https://YOUR-SERVICE.onrender.com/api/health`. It should show `"demo":false`.
-5. Enter that URL as the **Server address** in the Android app.
-
-**WhatsApp setup (one time)**
-1. In Meta Business Manager, create a WhatsApp Business Account and add a phone number that is not already used on WhatsApp. Note the **phone number ID** and the **WhatsApp Business Account ID**.
-2. Create a system user with a permanent access token that has WhatsApp messaging permissions. Put it in `WHATSAPP_TOKEN`.
-3. Create the login-code template. Run this on your computer:
-   ```bash
-   WHATSAPP_TOKEN=... WHATSAPP_BUSINESS_ACCOUNT_ID=... npm run whatsapp:template
-   ```
-   This creates an **Authentication** template named `club_login_otp` (language `en`) with a copy-code button and a 5-minute expiry. Wait until Meta marks it **Approved**. Messages are rejected until then.
-4. Check that the template name and language in `render.yaml` match the approved template.
-
-**What the server does with OTPs**
-- The code is sent as a WhatsApp Authentication template through the WhatsApp Cloud API (`graph.facebook.com/<version>/<phone-number-id>/messages`). The code is never returned in an API response when `DEMO=0`.
-- If WhatsApp is not configured, sign-in returns HTTP 503 with a clear message.
-- If Meta rejects a message (for example the number is not on WhatsApp), the app shows "Could not send the WhatsApp code" and the code is discarded.
-- One new code per phone number per minute (HTTP 429). Each code costs money.
-- **Confirm your first code arrives** on a real phone. The request body follows Meta's authentication-template format. The button parameter is sent the way Meta's copy-code examples show. Test it before inviting members.
-- Meta's rules and prices change. Check the current WhatsApp authentication pricing for Bangladesh in Meta's documentation before you rely on it for budgeting.
+5. Sign in with `ADMIN_PHONE` and `ADMIN_PASSWORD`, then add members with their starting passwords.
+6. Enter the service URL as the **Server address** in the Android app.
 
 **Environment variables**
 
 | Variable | Set in | Purpose |
 |---|---|---|
-| `DEMO` | render.yaml (`0`) | `0` on public servers. Demo mode returns OTP codes to the app. |
+| `DEMO` | render.yaml (`0`) | `0` on public servers. Turns off demo accounts. |
 | `DATA_DIR` | render.yaml (`/var/data`) | Location of the database and uploads (the disk mount path, once added) |
 | `ADMIN_PHONE` | dashboard | Creates the first admin on an empty database |
+| `ADMIN_PASSWORD` | dashboard (secret) | The first admin's password. Required when `ADMIN_PHONE` is set. |
 | `ADMIN_NAME` | render.yaml | Name for that admin |
-| `OTP_PROVIDER` | render.yaml (`whatsapp`) | `whatsapp` (default) or `bulksmsbd` |
-| `WHATSAPP_TOKEN` | dashboard (secret) | Meta access token |
-| `WHATSAPP_PHONE_NUMBER_ID` | dashboard | Sender phone number ID |
-| `WHATSAPP_OTP_TEMPLATE` | render.yaml (`club_login_otp`) | Approved Authentication template name |
-| `WHATSAPP_OTP_LANGUAGE` | render.yaml (`en`) | Template language code |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | your computer only | Needed only for `npm run whatsapp:template` |
 | `PORT` | Render sets it | Port to listen on |
 
 **Backups:** on the starter plan with a disk, the database is `/var/data/club.db`. Download a copy from the Render shell before major changes.
@@ -76,7 +60,7 @@ The Android app is the same web UI wrapped with Capacitor 6. The file is `apk/Cl
 1. Copy `apk/ClubRent-debug.apk` to the phone and open it. Allow "Install unknown apps" for your file manager.
 2. Start the server on a computer (`npm start`). The phone must be on the same Wi-Fi.
 3. Open **Club Rent** and enter the **Server address** on the first screen, for example `http://192.168.1.10:3000` (your computer's local IP). A public server must use `https://`.
-4. Sign in with a demo number. The OTP is shown on screen.
+4. Sign in with your mobile number and password. In demo mode, use a demo account (see below).
 
 The server address is saved on the phone. The app works only while the server is running.
 
@@ -93,11 +77,11 @@ npm run build:apk     # output: mobile/android/app/build/outputs/apk/debug/app-d
 - The launcher icon is the default Capacitor icon.
 - Camera and gallery uploads rely on the WebView file picker. Not tested on a device.
 - Not tested on an emulator or real phone in this environment. The build and package checks passed.
-- Before friends use this with real money, connect WhatsApp (see the Render section) and turn off demo mode (`DEMO=0`). Otherwise the OTP is shown to anyone who enters a number.
+- Before friends use this with real money, set `DEMO=0` on the server and set the admin password.
 
 ## Demo accounts (dev mode)
 
-Sign in with the mobile number. In dev mode the OTP code is shown on screen.
+Dev mode is on unless `DEMO=0`. All demo accounts use the password **`demo1234`**.
 
 | Role | Number | Name |
 |---|---|---|
@@ -107,7 +91,7 @@ Sign in with the mobile number. In dev mode the OTP code is shown on screen.
 
 Other seeded people: collector Tanvir Hasan `01711000002` (group A: Rahim, Karim, Sabbir, Imran, Fahim); members Nabil, Rafi, Arif in group B.
 
-Role comes from the phone number. Sessions last until the user taps Log out.
+Role comes from the phone number.
 
 ## What each role can do
 
@@ -117,11 +101,12 @@ Role comes from the phone number. Sessions last until the user taps Log out.
 - "I'll pay cash" and "Ask for update" send a request to the collector.
 - "Won't pay this month" posts a note with a reason. It still counts as due until paid.
 - Board: everyone's paid / due / note / review status, amounts and outstanding dues. Other members' payment details (TrxID, receiver, method) are hidden.
+- Settings: change own password.
 
 **Collector** (own group only)
 - Collect: each member's status for the month. Record cash, record bKash with TrxID, remind one member, notify selected or all unpaid.
 - Requests: verify member screenshots or status updates. Confirm updates the status. Reject requires a reason.
-- Members: add, edit, remove (deactivates; history is kept) members in own group.
+- Members: add (with a starting password), edit (including password reset), remove (deactivates; history is kept) members in own group.
 - Setup: own bKash number and monthly amount.
 - Sees every member's full history and details.
 
@@ -144,14 +129,14 @@ Role comes from the phone number. Sessions last until the user taps Log out.
 
 **Real (working in this build)**
 - SQLite database (`data/club.db`, WAL mode), schema and seed data.
+- Mobile + password sign-in with scrypt hashes, a 15-minute lock after 5 wrong passwords, and password change and reset.
 - Server-side permissions for every role; members cannot see other members' payment details.
-- OTP login rules: 5-minute expiry, 5 wrong attempts, then a new code is required.
 - Bearer sessions in the browser (`localStorage`) that persist until logout.
 - Offline screenshot reading with tesseract.js. Tested on a generated receipt image: amount 200, TrxID 8N7A2K9X1B, receiver 01711000002, date read correctly.
 - Confirm / reject flow, duplicate-TrxID checks, amount-mismatch blocking, notifications, collection tasks.
 
 **Stubbed or not verified**
-- **WhatsApp OTP needs your Meta setup.** In dev mode (`DEMO` not set to `0`) the code is shown on screen and logged on the server. For production, set the WhatsApp variables (see the Render section) and set `DEMO=0`.
+- **No phone verification.** Anyone who knows a registered number can try to sign in, so the password must be strong and unique. There is no "forgot password" link; an admin or collector resets it.
 - **bKash deep link** (`intent://…package=com.bKash.customerapp`) is not tested on a real phone. If it does not open, the pay sheet shows the number to send to manually.
 - **bKash payments are not verified automatically.** There is no bKash merchant API. The collector checks the screenshot and TrxID by hand; the app does not confirm money arrived.
 - **Screenshot reading is OCR, not AI.** Accuracy depends on image quality. Anything it cannot read can be typed in. Test coverage is for one generated receipt layout, not many real bKash screens.
@@ -164,13 +149,15 @@ Role comes from the phone number. Sessions last until the user taps Log out.
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | 3000 | Port to listen on (host is always 0.0.0.0) |
-| `DEMO` | on | `0` turns off demo OTP display and demo-account list |
+| `DEMO` | on | `0` turns off demo accounts and the demo password |
+| `ADMIN_PHONE` / `ADMIN_PASSWORD` | unset | First admin, created only when the database is empty |
 | `CLUB_TODAY` | real date (Asia/Dhaka) | Override the current month, e.g. `2026-10`, for testing |
 
 ## Project layout
 
 ```
 server/index.js   Express API: auth, members, payments, requests, notify, tasks
+server/auth.js    Password hashing (scrypt) and the login lock
 server/db.js      SQLite schema and seed data
 server/ocr.js     Screenshot reader (tesseract.js) and bKash text parser
 public/           Single-page app (index.html, app.js, style.css)
@@ -183,7 +170,7 @@ data/             Database and uploaded screenshots (created at runtime)
 
 - Only ৳200 per month, no extra fees (default: yes).
 - Members see each other's status and amount only (default; implemented).
-- Reminders by WhatsApp or push on due dates (not built).
+- Reminders by push on due dates (not built).
 - Language: English UI (default; Bangla not built).
 - Android only or iOS too: responsive web app, works on both.
 - Single admin (default).
