@@ -25,12 +25,16 @@ services:
         value: Club Admin
       - key: ADMIN_PHONE         # set in the Render dashboard: the admin's mobile, e.g. 01XXXXXXXXX
         sync: false
-      - key: SMS_PROVIDER        # bulksmsbd: OTP sent through BulkSMS BD
-        value: bulksmsbd
-      - key: BULKSMS_API_KEY     # set in the Render dashboard (secret)
+      - key: OTP_PROVIDER        # login codes are sent by WhatsApp
+        value: whatsapp
+      - key: WHATSAPP_TOKEN      # set in the Render dashboard (secret): Meta access token
         sync: false
-      - key: BULKSMS_SENDER_ID   # set in the Render dashboard: your approved sender ID
+      - key: WHATSAPP_PHONE_NUMBER_ID   # set in the dashboard: the WhatsApp Business phone number ID
         sync: false
+      - key: WHATSAPP_OTP_TEMPLATE
+        value: club_login_otp    # the approved Authentication template name
+      - key: WHATSAPP_OTP_LANGUAGE
+        value: en
 # disk:                          # uncomment on the starter plan
 #   name: club-data
 #   mountPath: /var/data

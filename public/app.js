@@ -106,10 +106,10 @@ function loginHtml() {
       <div class="brand">💸 Club Rent Tracker</div>
       <div class="card">
         <h3>Enter the OTP</h3>
-        <p class="muted small">We sent a 4-digit code to <b>${esc(L.phone)}</b>.</p>
-        ${L.devCode ? `<div class="warn">Demo mode: SMS is not connected in this build. Your code is <b>${esc(L.devCode)}</b>.</div>` : ''}
+        <p class="muted small">We sent a 6-digit code to <b>${esc(L.phone)}</b> on WhatsApp. It expires in 5 minutes.</p>
+        ${L.devCode ? `<div class="warn">Demo mode: WhatsApp is not connected in this build. Your code is <b>${esc(L.devCode)}</b>.</div>` : ''}
         <form data-form="otp" class="stack">
-          <label>OTP code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required autofocus></label>
+          <label>OTP code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" minlength="4" required autofocus></label>
           <div class="actions"><button class="primary" type="submit">Verify and sign in</button>
           <button type="button" class="ghost" data-act="changeNumber">Change number</button></div>
         </form>

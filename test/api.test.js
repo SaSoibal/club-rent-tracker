@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const assert = require('assert');
 const { createApp } = require('../server/index');
+const sms = require('../server/otp');
 
 let pass = 0, fails = [];
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'crt-test-'));
@@ -31,6 +32,7 @@ async function run(name, fn) {
     return { status: r.status, data };
   }
   async function login(phone) {
+    db.prepare('DELETE FROM otps WHERE phone = ?').run(phone); // fresh code, outside the 1-minute resend limit
     const o = await call('POST', '/api/auth/otp', { phone });
     assert.strictEqual(o.status, 200, 'otp request failed: ' + JSON.stringify(o.data));
     const v = await call('POST', '/api/auth/verify', { phone, code: o.data.devCode });
@@ -50,6 +52,9 @@ async function run(name, fn) {
   await run('wrong OTP is rejected', async () => {
     await call('POST', '/api/auth/otp', { phone: '01711000001' });
     expectStatus(await call('POST', '/api/auth/verify', { phone: '01711000001', code: '0000' }), 401);
+  });
+  await run('a new code cannot be requested within a minute', async () => {
+    expectStatus(await call('POST', '/api/auth/otp', { phone: '01711000001' }), 429);
   });
   await run('admin, collector and member can sign in', async () => {
     tokens.admin = await login('01711000001');
@@ -301,10 +306,10 @@ async function run(name, fn) {
       assert.deepStrictEqual(u, { name: 'Test Admin', phone: '01700000001', role: 'admin' });
       assert.strictEqual(prod.db.prepare('SELECT COUNT(*) c FROM payments').get().c, 0);
     });
-    await run('production: sign-in refused (503) until an SMS provider is connected', async () => {
+    await run('production: sign-in refused (503) until WhatsApp OTP is configured', async () => {
       const r = await pcall('POST', '/api/auth/otp', { phone: '01700000001' });
       assert.strictEqual(r.status, 503);
-      assert.match(r.data.error, /SMS service is not connected/);
+      assert.match(r.data.error, /WhatsApp OTP is not configured/);
       assert.strictEqual(prod.db.prepare('SELECT COUNT(*) c FROM otps').get().c, 0, 'no OTP stored without SMS');
     });
     await run('production: OTP code is never returned in the response', async () => {
@@ -319,20 +324,49 @@ async function run(name, fn) {
       delete process.env.ADMIN_PHONE;
       assert.ok(threw, 'expected startup error');
     });
-    await run('sms: BulkSMS BD is ready only with API key and sender ID', async () => {
-      const sms = require('../server/sms');
-      const saved = { p: process.env.SMS_PROVIDER, k: process.env.BULKSMS_API_KEY, s: process.env.BULKSMS_SENDER_ID };
-      process.env.SMS_PROVIDER = 'bulksmsbd';
-      delete process.env.BULKSMS_API_KEY; delete process.env.BULKSMS_SENDER_ID;
-      assert.strictEqual(sms.smsReady(), false);
-      process.env.BULKSMS_API_KEY = 'test-key'; process.env.BULKSMS_SENDER_ID = 'CLUB';
-      assert.strictEqual(sms.smsReady(), true);
-      assert.strictEqual(sms.toMsisdn('01711000001'), '8801711000001');
-      process.env.SMS_PROVIDER = 'unknown';
-      assert.strictEqual(sms.smsReady(), false);
-      if (saved.p === undefined) delete process.env.SMS_PROVIDER; else process.env.SMS_PROVIDER = saved.p;
-      if (saved.k === undefined) delete process.env.BULKSMS_API_KEY; else process.env.BULKSMS_API_KEY = saved.k;
-      if (saved.s === undefined) delete process.env.BULKSMS_SENDER_ID; else process.env.BULKSMS_SENDER_ID = saved.s;
+    await run('otp: WhatsApp is ready only with token, phone number ID and template', async () => {
+      const keys = ['OTP_PROVIDER','WHATSAPP_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE'];
+      const saved = Object.fromEntries(keys.map(k => [k, process.env[k]]));
+      const restore = () => keys.forEach(k => saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k]));
+      try {
+        keys.forEach(k => delete process.env[k]);
+        assert.strictEqual(sms.otpReady(), false);
+        process.env.WHATSAPP_TOKEN = 't'; process.env.WHATSAPP_PHONE_NUMBER_ID = '123'; process.env.WHATSAPP_OTP_TEMPLATE = 'club_login_otp';
+        assert.strictEqual(sms.otpReady(), true, 'whatsapp is the default provider');
+        process.env.OTP_PROVIDER = 'unknown';
+        assert.strictEqual(sms.otpReady(), false);
+        assert.strictEqual(sms.toDigits('01711000001'), '8801711000001');
+      } finally { restore(); }
+    });
+    await run('otp: WhatsApp request uses the authentication template with the code', async () => {
+      const keys = ['WHATSAPP_TOKEN','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_OTP_TEMPLATE','WHATSAPP_OTP_LANGUAGE'];
+      const saved = Object.fromEntries(keys.map(k => [k, process.env[k]]));
+      const realFetch = global.fetch;
+      let seen = null;
+      try {
+        process.env.WHATSAPP_TOKEN = 'test-token'; process.env.WHATSAPP_PHONE_NUMBER_ID = '555000111';
+        process.env.WHATSAPP_OTP_TEMPLATE = 'club_login_otp'; process.env.WHATSAPP_OTP_LANGUAGE = 'en';
+        global.fetch = async (url, opts) => { seen = { url, opts, body: JSON.parse(opts.body) }; return new Response(JSON.stringify({ messages: [{ id: 'wamid.TEST' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }); };
+        const id = await sms.sendOtp('01711000001', '4821');
+        assert.strictEqual(id, 'wamid.TEST');
+        assert.match(seen.url, /^https:\/\/graph\.facebook\.com\/v\d+\.\d+\/555000111\/messages$/);
+        assert.strictEqual(seen.opts.headers.Authorization, 'Bearer test-token');
+        assert.strictEqual(seen.body.messaging_product, 'whatsapp');
+        assert.strictEqual(seen.body.to, '8801711000001');
+        assert.strictEqual(seen.body.type, 'template');
+        assert.strictEqual(seen.body.template.name, 'club_login_otp');
+        assert.deepStrictEqual(seen.body.template.language, { code: 'en' });
+        const body = seen.body.template.components[0].parameters[0].text;
+        assert.strictEqual(body, '4821', 'code must be in the body parameter');
+      } finally { global.fetch = realFetch; keys.forEach(k => saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k])); }
+    });
+    await run('otp: WhatsApp errors are surfaced, not swallowed', async () => {
+      const realFetch = global.fetch;
+      process.env.WHATSAPP_TOKEN = 'x'; process.env.WHATSAPP_PHONE_NUMBER_ID = '1'; process.env.WHATSAPP_OTP_TEMPLATE = 't';
+      try {
+        global.fetch = async () => new Response(JSON.stringify({ error: { message: 'Recipient not on WhatsApp' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        await assert.rejects(() => sms.sendOtp('01711000001', '1111'), /Recipient not on WhatsApp/);
+      } finally { global.fetch = realFetch; delete process.env.WHATSAPP_TOKEN; delete process.env.WHATSAPP_PHONE_NUMBER_ID; delete process.env.WHATSAPP_OTP_TEMPLATE; }
     });
     ps.close();
     fs.rmSync(prodDir, { recursive: true, force: true });

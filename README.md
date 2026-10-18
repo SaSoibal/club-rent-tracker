@@ -27,15 +27,28 @@ The backend is one Node web service. The Blueprint file is `render.yaml`. It is 
 2. In Render, choose **New → Blueprint**, connect the repository, and apply `render.yaml`.
 3. In the service's **Environment** tab, set these values (they are not stored in Git):
    - `ADMIN_PHONE`: the admin's mobile number, e.g. `01XXXXXXXXX`. This creates the first admin when the database is empty.
-   - `BULKSMS_API_KEY`: your BulkSMS BD API key.
-   - `BULKSMS_SENDER_ID`: your approved BulkSMS BD sender ID.
+   - `WHATSAPP_TOKEN`: the Meta access token (see WhatsApp setup below).
+   - `WHATSAPP_PHONE_NUMBER_ID`: the ID of the WhatsApp Business phone number that sends the codes.
 4. Wait for the deploy to finish. Check `https://YOUR-SERVICE.onrender.com/api/health`. It should show `"demo":false`.
 5. Enter that URL as the **Server address** in the Android app.
 
+**WhatsApp setup (one time)**
+1. In Meta Business Manager, create a WhatsApp Business Account and add a phone number that is not already used on WhatsApp. Note the **phone number ID** and the **WhatsApp Business Account ID**.
+2. Create a system user with a permanent access token that has WhatsApp messaging permissions. Put it in `WHATSAPP_TOKEN`.
+3. Create the login-code template. Run this on your computer:
+   ```bash
+   WHATSAPP_TOKEN=... WHATSAPP_BUSINESS_ACCOUNT_ID=... npm run whatsapp:template
+   ```
+   This creates an **Authentication** template named `club_login_otp` (language `en`) with a copy-code button and a 5-minute expiry. Wait until Meta marks it **Approved**. Messages are rejected until then.
+4. Check that the template name and language in `render.yaml` match the approved template.
+
 **What the server does with OTPs**
-- The OTP is sent by SMS through BulkSMS BD (`https://bulksmsbd.net/api/smsapi`) and is never returned in an API response when `DEMO=0`.
-- If the API key or sender ID is missing, sign-in returns HTTP 503 with a clear message.
-- The send check treats the reply as failed when the body has a `response_code` other than 202. **Confirm the first real SMS arrives** before inviting members, because the response format is taken from BulkSMS BD's public documentation and not tested against a live account.
+- The code is sent as a WhatsApp Authentication template through the WhatsApp Cloud API (`graph.facebook.com/<version>/<phone-number-id>/messages`). The code is never returned in an API response when `DEMO=0`.
+- If WhatsApp is not configured, sign-in returns HTTP 503 with a clear message.
+- If Meta rejects a message (for example the number is not on WhatsApp), the app shows "Could not send the WhatsApp code" and the code is discarded.
+- One new code per phone number per minute (HTTP 429). Each code costs money.
+- **Confirm your first code arrives** on a real phone. The request body follows Meta's authentication-template format. The button parameter is sent the way Meta's copy-code examples show. Test it before inviting members.
+- Meta's rules and prices change. Check the current WhatsApp authentication pricing for Bangladesh in Meta's documentation before you rely on it for budgeting.
 
 **Environment variables**
 
@@ -45,9 +58,12 @@ The backend is one Node web service. The Blueprint file is `render.yaml`. It is 
 | `DATA_DIR` | render.yaml (`/var/data`) | Location of the database and uploads (the disk mount path, once added) |
 | `ADMIN_PHONE` | dashboard | Creates the first admin on an empty database |
 | `ADMIN_NAME` | render.yaml | Name for that admin |
-| `SMS_PROVIDER` | render.yaml (`bulksmsbd`) | Which SMS adapter to use |
-| `BULKSMS_API_KEY` | dashboard (secret) | BulkSMS BD API key |
-| `BULKSMS_SENDER_ID` | dashboard | Approved BulkSMS BD sender ID |
+| `OTP_PROVIDER` | render.yaml (`whatsapp`) | `whatsapp` (default) or `bulksmsbd` |
+| `WHATSAPP_TOKEN` | dashboard (secret) | Meta access token |
+| `WHATSAPP_PHONE_NUMBER_ID` | dashboard | Sender phone number ID |
+| `WHATSAPP_OTP_TEMPLATE` | render.yaml (`club_login_otp`) | Approved Authentication template name |
+| `WHATSAPP_OTP_LANGUAGE` | render.yaml (`en`) | Template language code |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | your computer only | Needed only for `npm run whatsapp:template` |
 | `PORT` | Render sets it | Port to listen on |
 
 **Backups:** on the starter plan with a disk, the database is `/var/data/club.db`. Download a copy from the Render shell before major changes.
@@ -77,7 +93,7 @@ npm run build:apk     # output: mobile/android/app/build/outputs/apk/debug/app-d
 - The launcher icon is the default Capacitor icon.
 - Camera and gallery uploads rely on the WebView file picker. Not tested on a device.
 - Not tested on an emulator or real phone in this environment. The build and package checks passed.
-- Before friends use this with real money, connect an SMS gateway and turn off demo mode (`DEMO=0`). Otherwise the OTP is shown to anyone who enters a number.
+- Before friends use this with real money, connect WhatsApp (see the Render section) and turn off demo mode (`DEMO=0`). Otherwise the OTP is shown to anyone who enters a number.
 
 ## Demo accounts (dev mode)
 
@@ -135,7 +151,7 @@ Role comes from the phone number. Sessions last until the user taps Log out.
 - Confirm / reject flow, duplicate-TrxID checks, amount-mismatch blocking, notifications, collection tasks.
 
 **Stubbed or not verified**
-- **SMS OTP is not connected.** In dev mode (`DEMO` not set to `0`) the code is shown on screen and logged on the server. For production, plug an SMS gateway into `POST /api/auth/otp` and turn dev mode off.
+- **WhatsApp OTP needs your Meta setup.** In dev mode (`DEMO` not set to `0`) the code is shown on screen and logged on the server. For production, set the WhatsApp variables (see the Render section) and set `DEMO=0`.
 - **bKash deep link** (`intent://…package=com.bKash.customerapp`) is not tested on a real phone. If it does not open, the pay sheet shows the number to send to manually.
 - **bKash payments are not verified automatically.** There is no bKash merchant API. The collector checks the screenshot and TrxID by hand; the app does not confirm money arrived.
 - **Screenshot reading is OCR, not AI.** Accuracy depends on image quality. Anything it cannot read can be typed in. Test coverage is for one generated receipt layout, not many real bKash screens.
@@ -167,7 +183,7 @@ data/             Database and uploaded screenshots (created at runtime)
 
 - Only ৳200 per month, no extra fees (default: yes).
 - Members see each other's status and amount only (default; implemented).
-- Reminders by SMS or push on due dates (not built).
+- Reminders by WhatsApp or push on due dates (not built).
 - Language: English UI (default; Bangla not built).
 - Android only or iOS too: responsive web app, works on both.
 - Single admin (default).

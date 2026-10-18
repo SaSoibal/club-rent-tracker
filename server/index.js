@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { openDb, seed, bootstrapAdmin } = require('./db');
 const ocr = require('./ocr');
-const sms = require('./sms');
+const otp = require('./otp');
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data'); // Render persistent disk mount in production
@@ -190,18 +190,27 @@ function createApp(opts = {}) {
   app.post('/api/auth/otp', H(async (req, res) => {
     const phone = normPhone(req.body.phone);
     if (!validPhone(phone)) fail(400, 'Enter a valid 11-digit mobile number');
-    // Outside demo mode a real SMS provider is required. Without one, nobody can log in.
-    if (!demo && !sms.smsReady()) fail(503, 'Sign-in is not available yet: the SMS service is not connected.');
+    // Outside demo mode a real OTP provider (WhatsApp) is required. Without one, nobody can log in.
+    if (!demo && !otp.otpReady()) fail(503, 'Sign-in is not available yet: WhatsApp OTP is not configured.');
     const u = db.prepare('SELECT id FROM users WHERE phone = ? AND active = 1').get(phone);
     if (!u) fail(404, 'This number is not registered. Ask your admin or collector to add you.');
+    // Each code costs money to send: allow one new code per phone per minute.
+    const prev = db.prepare('SELECT expires_at FROM otps WHERE phone = ?').get(phone);
+    if (prev && prev.expires_at - 5 * 60 * 1000 > Date.now() - 60 * 1000) fail(429, 'Please wait a minute before asking for a new code.');
     const code = String(crypto.randomInt(1000, 10000));
     db.prepare('INSERT OR REPLACE INTO otps (phone,code,expires_at,attempts) VALUES (?,?,?,0)').run(phone, code, Date.now() + 5 * 60 * 1000);
     if (demo) {
-      // Demo mode only: the code is returned so the flow can be tested without SMS.
+      // Demo mode only: the code is returned so the flow can be tested without WhatsApp.
       console.log(`[otp] demo code for ${phone}: ${code}`);
       return res.json({ ok: true, devCode: code });
     }
-    await sms.sendOtp(phone, code);
+    try {
+      await otp.sendOtp(phone, code);
+    } catch (e) {
+      db.prepare('DELETE FROM otps WHERE phone = ?').run(phone);
+      console.error('[otp] send failed:', e.message);
+      fail(502, 'Could not send the WhatsApp code. Check that this number uses WhatsApp, then try again.');
+    }
     res.json({ ok: true });
   }));
 
