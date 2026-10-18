@@ -1,0 +1,21 @@
+# dependencies and generated files
+node_modules/
+**/node_modules/
+mobile/www/
+**/build/
+**/.gradle/
+local.properties
+
+# live data: database, uploaded screenshots (contain phone numbers and payment details)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# secrets
+.env
+.env.*
+
+# large or generated artifacts
+apk/
+*.traineddata

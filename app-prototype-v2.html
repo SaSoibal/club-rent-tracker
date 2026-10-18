@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Club Rent Tracker – Role-based UI Prototype v2</title>
+<style>
+:root{--p:#0f766e;--pl:#e6f4f1;--gl:#dcfce7;--rl:#fee2e2;--al:#fef3c7;--bl:#dbeafe;--t:#1f2937;--m:#6b7280;--bg:#f6f8f7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",Arial,sans-serif;background:#e4ebe8;color:var(--t);min-height:100vh}
+.layout{display:grid;grid-template-columns:265px 414px 300px;gap:28px;padding:28px;justify-content:center;align-items:start}
+.panel{background:#fff;border-radius:16px;padding:20px;position:sticky;top:28px;max-height:calc(100vh - 56px);overflow-y:auto}
+.panel::-webkit-scrollbar{width:0}
+.panel h1{font-size:17px;color:var(--p)}
+.sub{font-size:12.5px;color:var(--m);margin:4px 0 12px;line-height:1.5}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--m);margin:16px 0 6px;font-weight:700}
+.nav-btn{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:7px 9px;border:0;background:none;border-radius:10px;font-size:13.5px;cursor:pointer;color:#374151;margin-bottom:2px}
+.nav-btn .n{width:22px;height:22px;border-radius:50%;background:#eef2f1;font-size:11px;display:grid;place-items:center;font-weight:700;color:var(--m);flex-shrink:0}
+.nav-btn.on{background:var(--pl);color:var(--p);font-weight:600}
+.nav-btn.on .n{background:var(--p);color:#fff}
+.demo3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.demo3 button{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:8px 4px;font-size:12px;font-weight:600;cursor:pointer;color:#374151}
+.demo3 button:hover{border-color:var(--p);color:var(--p)}
+.info h3{font-size:15px;margin-bottom:8px}
+.info p{font-size:13.5px;line-height:1.6;color:#374151}
+.info ul{margin:10px 0 0 18px;font-size:13px;line-height:1.7;color:#374151}
+/* phone */
+.phone{width:390px;height:820px;background:#fff;border-radius:44px;border:12px solid #111827;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.28);display:flex;flex-direction:column}
+.status{height:40px;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:13px;font-weight:700;flex-shrink:0;background:#fff}
+.screen{flex:1;overflow-y:auto;background:var(--bg);padding:4px 16px 20px}
+.screen::-webkit-scrollbar{width:0}
+.tabbar{height:70px;display:flex;justify-content:space-around;align-items:flex-start;padding-top:8px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}
+.tab{background:none;border:0;font-size:10.5px;color:var(--m);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;width:64px;position:relative}
+.tab i{font-style:normal;font-size:18px}
+.tab.on{color:var(--p);font-weight:700}
+.tbadge{position:absolute;top:-2px;right:8px;background:#dc2626;color:#fff;font-size:9px;border-radius:99px;padding:1px 5px;font-weight:700}
+/* common */
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 2px 12px;gap:8px}
+.hdr-back{display:flex;align-items:center;gap:10px;padding:4px 0 12px}
+.back{width:36px;height:36px;border-radius:50%;background:#fff;border:0;font-size:20px;cursor:pointer;color:var(--t)}
+.h1{font-size:20px;font-weight:800}
+.muted{color:var(--m)}.small{font-size:12px}.bold{font-weight:600}.center{text-align:center}
+.grow{flex:1;min-width:0}.red{color:var(--rl)}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card.ok{background:var(--gl)}.card.warn{background:var(--al)}.card.due{background:var(--rl)}.card.info{background:var(--bl)}
+.big{font-size:26px;font-weight:800;margin:4px 0 10px}
+.big span{font-size:13px;color:var(--m);font-weight:500}
+.big2{font-size:21px;font-weight:800;margin:4px 0}
+.bar{height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+.bar div{height:100%;background:linear-gradient(90deg,#14b8a6,var(--p));border-radius:99px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.tile{border-radius:14px;padding:10px 4px;text-align:center}
+.tile b{display:block;font-size:18px}.tile span{font-size:10.5px}
+.tile.g{background:var(--gl);color:#166534}.tile.r{background:var(--rl);color:#991b1b}.tile.a{background:var(--al);color:#92400e}.tile.b{background:var(--bl);color:#1e40af}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stats3 div{background:#fff;border-radius:14px;padding:10px 6px;text-align:center}
+.stats3 b{display:block;font-size:15px}.stats3 span{font-size:11px;color:var(--m)}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:13px;font-size:14.5px;font-weight:600;cursor:pointer;background:#eef2f1;color:var(--t);margin-bottom:10px;text-align:center;font-family:inherit}
+.btn.primary{background:var(--p);color:#fff}
+.btn.ghost{background:#fff;border:1px solid #d1d5db}
+.btn.small{width:auto;display:inline-block;padding:8px 12px;font-size:12.5px;margin:0}
+.btn.danger{background:var(--rl);color:#991b1b}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.qa{border:0;background:#fff;border-radius:14px;padding:13px 10px;font-size:13px;font-weight:600;text-align:left;cursor:pointer;color:var(--t);box-shadow:0 1px 2px rgba(0,0,0,.05);font-family:inherit}
+.sec{display:flex;justify-content:space-between;align-items:center;margin:16px 2px 8px}
+.sec h3{font-size:14px}
+.sec a{font-size:13px;color:var(--p);cursor:pointer;font-weight:600}
+.mswitch{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:14px;padding:6px;margin-bottom:12px}
+.mswitch button{width:34px;height:34px;border:0;border-radius:10px;background:var(--pl);color:var(--p);font-size:19px;cursor:pointer}
+.mswitch button:disabled{opacity:.3}
+.mswitch b{font-size:14px}
+.chips{display:flex;gap:7px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}
+.chip{border:1px solid #d1d5db;background:#fff;border-radius:99px;padding:6px 12px;font-size:12.5px;white-space:nowrap;cursor:pointer;color:#374151;font-family:inherit}
+.chip.on{background:var(--p);border-color:var(--p);color:#fff}
+.seg3{display:flex;background:#e9efec;border-radius:12px;padding:4px;margin-bottom:12px}
+.seg3 button{flex:1;border:0;background:none;padding:8px 4px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--m);cursor:pointer;font-family:inherit}
+.seg3 button.on{background:#fff;color:var(--p);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.list{background:#fff;border-radius:18px;overflow:hidden;margin-bottom:12px}
+.item{padding:12px 14px;border-bottom:1px solid #f0f2f1;cursor:pointer;font-size:14px}
+.item:last-child{border-bottom:0}
+.avatar{width:40px;height:40px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0;cursor:pointer}
+.avatar.sm{width:34px;height:34px;font-size:11.5px}
+.avatar.lg{width:72px;height:72px;font-size:24px;cursor:default}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:0;background:#fff;font-size:17px;position:relative;cursor:pointer}
+.badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;border-radius:99px;padding:1px 5px;font-weight:700}
+.pill{font-size:11px;font-weight:700;padding:4px 8px;border-radius:99px;white-space:nowrap}
+.pill.g{background:var(--gl);color:#166534}.pill.r{background:var(--rl);color:#991b1b}.pill.a{background:var(--al);color:#92400e}.pill.n{background:#f3f4f6;color:var(--m)}.pill.b{background:var(--bl);color:#1e40af}
+.mini{font-size:11px;background:#f1f5f4;border-radius:6px;padding:2px 6px;margin-right:4px;display:inline-block;margin-top:4px}
+.thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#f1f5f4}
+.thumb.ph{display:grid;place-items:center;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:8px}
+.cell{border-radius:12px;padding:8px 0;text-align:center;cursor:pointer;font-size:11.5px;font-weight:700;background:#fff;border:1px solid #e5e7eb}
+.cell small{display:block;font-size:12px;margin-top:2px}
+.cell.paid{background:var(--gl);color:#166534;border-color:#bbf7d0}
+.cell.due{background:var(--rl);color:#991b1b;border-color:#fecaca}
+.cell.note{background:var(--al);color:#92400e;border-color:#fde68a}
+.cell.review{background:var(--bl);color:#1e40af;border-color:#bfdbfe}
+.cell.future,.cell.na{color:#9ca3af;background:#f9fafb}
+.legend{display:flex;gap:10px;font-size:10.5px;color:var(--m);margin-bottom:8px;justify-content:center;flex-wrap:wrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.tbl{overflow-x:auto;background:#fff;border-radius:14px;padding:8px;margin-bottom:12px}
+.mtx{border-collapse:separate;border-spacing:3px;font-size:11px}
+.mtx th{font-weight:600;color:var(--m);padding:2px 3px;font-size:10.5px}
+.mtx td.nm{font-weight:600;white-space:nowrap;padding-right:6px;cursor:pointer;font-size:11.5px}
+.mtx td.c{width:30px;height:26px;text-align:center;border-radius:6px;font-weight:700;font-size:11px}
+.mtx .paid{background:#dcfce7;color:#166534}.mtx .due{background:#fee2e2;color:#991b1b}.mtx .note{background:#fef3c7;color:#92400e}.mtx .review{background:#dbeafe;color:#1e40af}.mtx .na,.mtx .future{color:#d1d5db}
+.mtx tr.tot td{font-weight:700;font-size:10px;color:var(--p)}
+.kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:13.5px;gap:10px}
+.kv span{color:var(--m)}
+.steps{margin:10px 0 14px 18px;font-size:13px;line-height:1.7;color:#374151}
+.amount{background:var(--pl);border-radius:14px;padding:12px;text-align:center;margin-bottom:14px}
+.amount b{font-size:28px;color:var(--p)}
+.shot{width:100%;border-radius:12px;border:1px solid #e5e7eb;margin:8px 0;display:block}
+.dropzone{display:block;border:2px dashed #94a3b8;border-radius:14px;padding:16px;text-align:center;cursor:pointer;background:#fff;font-size:13px}
+.noshot{background:#f1f5f4;border-radius:12px;padding:18px;text-align:center;font-size:13px;color:var(--m);margin:8px 0}
+.quote{background:#f8fafc;border-left:3px solid var(--p);padding:8px 10px;border-radius:8px;font-size:13px;font-style:italic;margin-top:8px}
+.dot2{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--p);margin-right:6px}
+.chipwrap{display:flex;flex-wrap:wrap;gap:6px}
+.logo{width:72px;height:72px;border-radius:22px;background:var(--p);color:#fff;display:grid;place-items:center;margin:0 auto 12px;font-size:32px}
+.login-top{text-align:center;padding:20px 0 12px}
+.otprow{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.otp{width:52px;height:56px;text-align:center;font-size:22px;border:1px solid #d1d5db;border-radius:12px;font-family:inherit}
+.check{display:flex;gap:8px;align-items:center;font-size:13px;color:#374151;margin-top:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.grid3 button{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:12px 4px;font-size:12.5px;font-weight:600;cursor:pointer;color:#374151;font-family:inherit}
+.grid3 button:hover{border-color:var(--p);color:var(--p)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12.5px;color:var(--m);margin-bottom:6px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:12px;font-size:14px;font-family:inherit;background:#fff;color:var(--t)}
+.field textarea{min-height:76px;resize:none}
+.field input.cc{width:76px;flex-shrink:0}
+.mini-sel{padding:6px;border:1px solid #d1d5db;border-radius:9px;font-size:12px;font-family:inherit;max-width:120px}
+.segm{display:grid;grid-template-columns:1fr 1fr;background:#f1f5f4;padding:4px;border-radius:12px}
+.segm button{border:0;background:none;padding:9px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--m);font-family:inherit}
+.segm button.on{background:#fff;color:var(--p);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+/* overlay / sheet */
+.overlay{position:absolute;inset:0;z-index:10}
+.scrim{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:12px 18px 22px;max-height:90%;overflow-y:auto}
+.sheet::-webkit-scrollbar{width:0}
+.grab{width:40px;height:5px;border-radius:9px;background:#d1d5db;margin:0 auto 12px}
+.toast{position:absolute;left:20px;right:20px;top:52px;background:#111827;color:#fff;padding:11px 14px;border-radius:12px;font-size:13px;z-index:30;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
+.toast.show{opacity:1}
+.demo-scen{margin-top:14px;border-top:1px dashed #d1d5db;padding-top:10px}
+.seg-mini{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.seg-mini button{border:1px solid #d1d5db;background:#fff;border-radius:99px;padding:5px 9px;font-size:11.5px;cursor:pointer;font-family:inherit}
+.seg-mini button.on{background:#111827;color:#fff;border-color:#111827}
+table.chk{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px;background:#fff;border-radius:12px;overflow:hidden}
+table.chk th{text-align:left;background:#f1f5f4;padding:7px 8px;font-size:11.5px;color:var(--m)}
+table.chk td{padding:7px 8px;border-top:1px solid #eef2f1;vertical-align:top}
+.okc{color:#166534}.badc{color:#b91c1c}
+.verdict{border-radius:12px;padding:10px 12px;font-size:12.5px;margin:6px 0 10px;line-height:1.5}
+.verdict.good{background:var(--gl);color:#166534}.verdict.bad{background:var(--rl);color:#991b1b}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="panel" id="left"></aside>
+
+  <main>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>▮▮▮ 5G ▭</span></div>
+      <div class="toast" id="toast"></div>
+      <div class="screen" id="screen"></div>
+      <nav class="tabbar" id="tabbar"></nav>
+      <div class="overlay" id="overlay" style="display:none"><div class="scrim" onclick="closeSheet()"></div><div class="sheet" id="sheet"></div></div>
+    </div>
+  </main>
+
+  <aside class="panel info" id="info"></aside>
+</div>
+
+<script>
+/* ================= CONSTANTS ================= */
+const $=id=>document.getElementById(id);
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CUR=9, YEAR=2026, TODAY='18 Oct 2026';
+const PALETTE=['#0f766e','#7c3aed','#db2777','#2563eb','#ea580c','#0891b2','#65a30d','#9333ea','#be123c','#4f46e5','#475569'];
+const TPL={r1:'Assalamu alaikum {name}, your club rent for {month} is due. Please pay via bKash and upload the screenshot in the app.',r2:'Final reminder, {name}: {month} rent is overdue. Please pay today to avoid a late note.',c:''};
+const ALLOWED={admin:['home','members','collect','inbox','setup','member'],collector:['home','members','collect','inbox','me','member'],member:['home','history','inbox','me']};
+const TABS={
+  admin:[['home','🏠','Home'],['members','👥','Members'],['collect','💰','Collect'],['inbox','📥','Requests'],['setup','⚙️','Setup']],
+  collector:[['home','🏠','Home'],['members','👥','Members'],['collect','💰','Collect'],['inbox','📥','Inbox'],['me','👤','Me']],
+  member:[['home','🏠','Home'],['history','🧾','History'],['inbox','🔔','Alerts'],['me','👤','Me']]
+};
+const DEFSEG={collect:'collect',inbox:'req'};
+const NAVS={
+  admin:[['home','Dashboard'],['members','Members · add / edit / remove'],['collect','Collect · monthly amount'],['history','Monthly history · all members'],['inbox','Requests & alerts'],['setup','Setup · rent, collectors, bKash'],['member','Member profile']],
+  collector:[['home','Home · my group'],['members','Members · add / edit / remove'],['collect','Collect payment'],['history','Monthly history · all members'],['inbox','Requests & alerts'],['me','Profile · bKash info'],['member','Member profile']],
+  member:[['home','Home · pay rent'],['history','My payment history'],['inbox','Alerts & reminders'],['me','Profile']]
+};
+const POPUPS={
+  admin:[['record','Record payment'],['notify','Notify members (bulk)'],['amount','Set monthly amount'],['task','Create collection task'],['member','Add member'],['review','Review payment request']],
+  collector:[['record','Record payment'],['notify','Notify members'],['amount','Set monthly amount'],['member','Add member'],['review','Review payment request'],['bkinfo','Update bKash info']],
+  member:[['bkash','Pay rent via bKash'],['upload','Upload bKash screenshot'],['update','Request status update'],['remark',"Can't pay this month"]]
+};
+
+/* ================= DATA (sample) ================= */
+let club={defaultShare:200,dueDay:10,amount:{},bkash:{name:'Mahbub Alam',no:'017XX-XXX000'}};
+let users=[
+  {id:'u1',name:'Mahbub Alam',phone:'01711000001',role:'admin',pays:false,active:true,collector:null,bkash:null,h:null},
+  {id:'u2',name:'Tanvir Hasan',phone:'01711000002',role:'collector',pays:true,active:true,collector:null,bkash:'017•• ••• 456',h:'PPPPPPPPPP'},
+  {id:'u3',name:'Shakil Mia',phone:'01711000003',role:'collector',pays:true,active:true,collector:null,bkash:'018•• ••• 219',h:'PPPPPPPPPP'},
+  {id:'u4',name:'Rahim Uddin',phone:'01711000004',role:'member',pays:true,active:true,collector:'u2',h:'PPPPPPPPPP'},
+  {id:'u5',name:'Karim Hossain',phone:'01711000005',role:'member',pays:true,active:true,collector:'u2',h:'PPPPDPPPPP'},
+  {id:'u6',name:'Sabbir Ahmed',phone:'01711000006',role:'member',pays:true,active:true,collector:'u2',h:'PPPPPPPPPD'},
+  {id:'u7',name:'Imran Khan',phone:'01711000007',role:'member',pays:true,active:true,collector:'u2',h:'PPPPPPPPPD',notes:{9:{reason:'Traveling',text:'Going to Sylhet for family work. Will pay after 10 days.',promise:'28 Oct',at:'16 Oct'}}},
+  {id:'u8',name:'Fahim Chowdhury',phone:'01711000008',role:'member',pays:true,active:true,collector:'u2',h:'PDPDPPDDDD',notes:{1:{reason:'Job issue',text:'Salary delayed this month.',promise:'',at:'4 Feb'}}},
+  {id:'u9',name:'Nabil Sarker',phone:'01711000009',role:'member',pays:true,active:true,collector:'u3',h:'PPPPPPPPPP'},
+  {id:'u10',name:'Rafi Islam',phone:'01711000010',role:'member',pays:true,active:true,collector:'u3',h:'PPPPPPPPPP'},
+  {id:'u11',name:'Arif Rahman',phone:'01711000011',role:'member',pays:true,active:true,collector:'u3',h:'PPPPPPPPPP'}
+];
+let reqs=[
+  {id:1,uid:'u6',month:9,kind:'screenshot',amount:200,expected:200,trx:'BK7Q2M9X1A',receiver:'017•• ••• 456',dateTime:'18 Oct 2026, 9:01 PM',shot:receiptSVG(200,'017•• ••• 456','BK7Q2M9X1A'),ocr:true,msg:'',at:'18 Oct · 9:02 PM',status:'pending'},
+  {id:2,uid:'u5',month:4,kind:'update',amount:200,expected:200,trx:'',receiver:'',dateTime:'',shot:null,ocr:false,msg:'[Cash] I paid cash to Tanvir on 5 May. Please update my status.',at:'16 Oct · 4:20 PM',status:'pending'},
+  {id:3,uid:'u8',month:9,kind:'screenshot',amount:150,expected:200,trx:'BK9K4LP2TD',receiver:'017•• ••• 456',dateTime:'18 Oct 2026, 7:40 PM',shot:receiptSVG(150,'017•• ••• 456','BK9K4LP2TD'),ocr:true,msg:'',at:'18 Oct · 7:41 PM',status:'pending'}
+];
+let notifs=[
+  {id:1,uid:'u6',title:'Oct rent reminder',body:'৳200 is due for October. Pay via bKash and upload the screenshot.',kind:'pay',month:9,at:'Today, 8:00 AM',read:false},
+  {id:2,uid:'u2',title:'New screenshot',body:'Sabbir Ahmed uploaded a bKash screenshot. Amount ৳200, TrxID BK7Q2M9X1A.',kind:'review',reqId:1,at:'Today, 9:02 PM',read:false},
+  {id:3,uid:'u2',title:'Status update request',body:'Karim Hossain says he paid cash for May.',kind:'review',reqId:2,at:'Today, 4:20 PM',read:false},
+  {id:4,uid:'u1',title:'October summary',body:'7 of 10 paid · ৳1,400 of ৳2,000 collected.',kind:'info',at:'Today',read:false},
+  {id:5,uid:'u7',title:'Your note was saved',body:"'Won't pay' noted for October. Your collector has been notified.",kind:'info',at:'16 Oct',read:true},
+  {id:6,uid:'u2',title:'New screenshot',body:'Fahim Chowdhury uploaded a screenshot. Amount read as ৳150, due ৳200.',kind:'review',reqId:3,at:'Today, 7:41 PM',read:false}
+];
+let tasks=[{id:1,title:'Collect October rent – Group A',collector:'u2',month:9,due:'12 Oct',targets:['u4','u5','u6','u7','u8']}];
+let nid=100;
+
+/* ================= STATE ================= */
+let S={uid:null,route:'home',seg:null,scope:null,pid:null,filter:'all',month:CUR,sheet:null,sp:{},lstep:'phone',lphone:'',otp:['','','',''],stay:true};
+const SKEY='crt_session_uid';
+
+/* ================= HELPERS ================= */
+const U=id=>users.find(x=>x.id===id);
+const me=()=>U(S.uid);
+const role=()=>me().role;
+const first=n=>n.split(' ')[0];
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const fmt=n=>'৳'+Number(n).toLocaleString('en-US');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ini=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
+const colOf=u=>PALETTE[(parseInt(u.id.slice(1))-1)%PALETTE.length];
+const amount=i=>club.amount[i]??club.defaultShare;
+const payers=()=>users.filter(u=>u.active&&u.pays);
+const scopeList=sc=>sc==='all'?payers():payers().filter(u=>u.collector===sc);
+const defaultScope=()=>role()==='collector'?me().id:'all';
+const collectors=()=>users.filter(u=>u.role==='collector'&&u.active);
+function fmtDate(v){if(!v)return '';const d=new Date(v);return d.getDate()+' '+MONTHS[d.getMonth()];}
+function receiptSVG(amt,to,trx){
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='520'><rect width='300' height='520' fill='#e2136e'/><rect x='18' y='70' width='264' height='420' rx='18' fill='#fff'/><text x='150' y='112' text-anchor='middle' font-family='Arial' font-size='18' font-weight='bold' fill='#e2136e'>bKash</text><circle cx='150' cy='165' r='28' fill='#dcfce7'/><text x='150' y='174' text-anchor='middle' font-size='28' fill='#16a34a'>✓</text><text x='150' y='220' text-anchor='middle' font-family='Arial' font-size='16' fill='#111'>Send Money Successful</text><text x='150' y='262' text-anchor='middle' font-family='Arial' font-size='30' font-weight='bold' fill='#111'>Tk ${amt}.00</text><text x='40' y='318' font-family='Arial' font-size='13' fill='#666'>To</text><text x='260' y='318' text-anchor='end' font-family='Arial' font-size='13' fill='#111'>${to}</text><text x='40' y='348' font-family='Arial' font-size='13' fill='#666'>TrxID</text><text x='260' y='348' text-anchor='end' font-family='Arial' font-size='13' fill='#111'>${trx}</text><text x='40' y='378' font-family='Arial' font-size='13' fill='#666'>Reference</text><text x='260' y='378' text-anchor='end' font-family='Arial' font-size='13' fill='#111'>RENT-OCT</text><line x1='40' y1='410' x2='260' y2='410' stroke='#eee'/><text x='150' y='445' text-anchor='middle' font-family='Arial' font-size='12' fill='#999'>Sample screenshot (demo)</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+
+/* ---- status & money ---- */
+function pendingShot(u,i){return reqs.find(r=>r.uid===u.id&&r.month===i&&r.status==='pending'&&r.kind==='screenshot');}
+function st(u,i){
+  if(i>CUR) return 'future';
+  const h=u.h[i];
+  if(h==='X') return 'na';
+  if(h==='P') return 'paid';
+  if(pendingShot(u,i)) return 'review';
+  if(u.notes&&u.notes[i]) return 'note';
+  return 'due';
+}
+function getDet(u,i){
+  if(u.extra&&u.extra[i]) return u.extra[i];
+  const s=parseInt(u.id.slice(1))*31+i*17, cash=s%3===0;
+  return {method:cash?'Cash':'bKash',trx:cash?'—':'BK'+((s*104729)%1000000000).toString(36).toUpperCase().padStart(8,'0'),date:(1+s%27)+' '+MONTHS[i]+' '+YEAR};
+}
+function outList(u){const a=[];for(let i=0;i<=CUR;i++){const s=st(u,i);if(s==='due'||s==='note'||s==='review')a.push(i);}return a;}
+function outSum(u){return outList(u).reduce((a,i)=>a+amount(i),0);}
+function defMonth(u){if(!u)return CUR;if(u.h[CUR]!=='P'&&st(u,CUR)!=='na')return CUR;const l=outList(u);return l.length?l[l.length-1]:CUR;}
+function sumOf(list,i){
+  const c={paid:0,due:0,note:0,review:0,total:0,exp:0,col:0};
+  list.forEach(u=>{const s=st(u,i); if(s==='na'||s==='future')return; c.total++; c[s]++;});
+  c.exp=c.total*amount(i); c.col=c.paid*amount(i); return c;
+}
+function payee(u){
+  if(u.role==='member'){const c=U(u.collector); if(c&&c.bkash) return {name:c.name+' (Collector)',no:c.bkash};}
+  return {name:club.bkash.name+' (Admin)',no:club.bkash.no};
+}
+function markPaid(u,i,info){
+  u.h=u.h.slice(0,i)+'P'+u.h.slice(i+1);
+  u.extra=u.extra||{}; u.extra[i]=info;
+  if(u.notes) delete u.notes[i];
+}
+function notify(uid,title,body,kind,extra){
+  notifs.unshift(Object.assign({id:nid++,uid,title,body,kind,at:'Just now',read:false},extra||{}));
+}
+function myNotifs(){return notifs.filter(n=>n.uid===S.uid);}
+function unread(){return myNotifs().filter(n=>!n.read).length;}
+function markRead(){notifs.forEach(n=>{if(n.uid===S.uid)n.read=true;});}
+function reqsFor(){return role()==='admin'?reqs:reqs.filter(r=>U(r.uid).collector===me().id);}
+function reqPill(r){return r.status==='pending'?'<span class="pill b">Pending</span>':r.status==='confirmed'?'<span class="pill g">Confirmed</span>':'<span class="pill r">Rejected</span>';}
+function pill(s){const m={paid:['g','Paid'],due:['r','Due'],note:['a',"Won't pay"],review:['b','Review'],future:['n','—'],na:['n','—']};const [c,t]=m[s];return `<span class="pill ${c}">${t}</span>`;}
+
+/* ================= SESSION ================= */
+function saveSession(){try{S.stay&&S.uid?localStorage.setItem(SKEY,S.uid):localStorage.removeItem(SKEY);}catch(e){}}
+function readSession(){try{return localStorage.getItem(SKEY);}catch(e){return null;}}
+function login(uid){
+  S.uid=uid; S.route='home'; S.seg=null; S.scope=defaultScope(); S.filter='all';
+  S.lstep='phone'; S.otp=['','','',''];
+  saveSession(); render();
+  toast('Welcome, '+first(me().name)+' 👋');
+}
+function logout(){S.uid=null; S.sheet=null; S.lstep='phone'; clearSessionKey(); render(); toast('Logged out');}
+function clearSessionKey(){try{localStorage.removeItem(SKEY);}catch(e){}}
+const DEMO={admin:'u1',collector:'u2',member:'u6'};
+function quickLogin(r){S.stay=true; login(DEMO[r]);}
+function sendOtp(){
+  const p=(S.lphone||'').replace(/\s|-/g,'');
+  const u=users.find(x=>x.phone===p&&x.active);
+  if(!u){toast('Number not registered. Ask the admin to add you.');return;}
+  S.lstep='otp'; S.lphone=p; S.otp=['','','',''];
+  render(); toast('OTP sent (demo code: 1234)');
+}
+function otpIn(k,el){S.otp[k]=el.value.replace(/\D/g,'').slice(-1); el.value=S.otp[k]; if(S.otp[k]&&k<3) $('o'+(k+1)).focus();}
+function verifyOtp(){
+  const code=S.otp.join('');
+  if(code.length<4){toast('Enter the 4-digit OTP');return;}
+  if(code!=='1234'){toast('Wrong OTP. Try 1234 (demo)');return;}
+  const u=users.find(x=>x.phone===S.lphone&&x.active);
+  login(u.id);
+}
+
+/* ================= NAVIGATION ================= */
+function go(route,opts={}){
+  if(!me()) return;
+  if(!ALLOWED[role()].includes(route)) route='home';
+  const changed=route!==S.route;
+  S.route=route; S.sheet=null;
+  if('seg' in opts) S.seg=opts.seg; else if(changed) S.seg=DEFSEG[route]??null;
+  if(opts.scope!==undefined) S.scope=opts.scope;
+  if(opts.uid!==undefined) S.pid=opts.uid;
+  if(opts.filter!==undefined) S.filter=opts.filter;
+  if(route==='inbox'&&(S.seg==='alerts'||role()==='member')) markRead();
+  render();
+}
+function jumpNav(k){
+  const r=role();
+  if(k==='history'){ r==='member'?go('history'):go('collect',{seg:'history'}); return; }
+  if(k==='collect'){ go('collect',{seg:'collect'}); return; }
+  if(k==='inbox'){ r==='member'?go('inbox'):go('inbox',{seg:'req'}); return; }
+  if(k==='member'){ go('member',{uid:'u5'}); return; }
+  go(k);
+}
+function setSeg(x){ if(x==='alerts') markRead(); S.seg=x; render(); }
+function setScope(k){ S.scope=k; render(); }
+function setFilter(f){ S.filter=f; render(); }
+function shiftMonth(d){ S.month=Math.max(0,Math.min(CUR,S.month+d)); render(); }
+function openMember(id){ go('member',{uid:id}); }
+function cellTap(uid,i){const u=U(uid);const s=st(u,i);const lab={paid:'Paid',due:'Due',note:"Won't pay (noted)",review:'Screenshot under review',future:'Upcoming',na:'Not a member yet'}[s];toast(`${FULL[i]}: ${lab}`);}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2100);}
+
+/* ================= SHEET ENGINE ================= */
+function openSheet(name,sp={}){
+  if(!me()) return;
+  S.sheet=name; S.sp=Object.assign({},sp);
+  const m=me();
+  switch(name){
+    case 'record': { const uid=S.sp.uid||(payers().find(u=>outSum(u)>0)||payers()[0]).id; S.sp.uid=uid; S.sp.month=defMonth(U(uid)); S.sp.method='Cash'; S.sp.trx=''; break; }
+    case 'amount': S.sp.v=amount(S.month); break;
+    case 'notify': S.sp.mode=S.sp.mode||'select'; S.sp.sel=S.sp.sel||[]; S.sp.month=S.sp.month??S.month; S.sp.msg=TPL.r1; break;
+    case 'bkash': S.sp.month=S.sp.month??defMonth(m); break;
+    case 'upload': S.sp.month=S.sp.month??defMonth(m); S.sp.trx=''; S.sp.amt=''; S.sp.receiver=''; S.sp.dateTime=''; S.sp.shot=null; S.sp.ocrState=null; break;
+    case 'update': S.sp.month=S.sp.month??defMonth(m); S.sp.method='Cash'; S.sp.trx=''; S.sp.msg=''; break;
+    case 'remark': S.sp.month=S.sp.month??defMonth(m); S.sp.reason=''; S.sp.text=''; S.sp.promise=''; break;
+    case 'review': { const r=reqs.find(x=>x.id===S.sp.reqId)||reqs.find(x=>x.status==='pending'); if(!r){S.sheet=null;toast('No pending requests');render();return;} S.sp.reqId=r.id; S.sp.method=r.kind==='screenshot'?'bKash':'Cash'; S.sp.trx=r.trx||''; S.sp.rej=''; S.sp.vok=false; break; }
+    case 'task': S.sp.title='Collect rent – '; S.sp.collector=S.sp.collector||collectors()[0].id; S.sp.month=CUR; S.sp.due='12 Oct'; break;
+    case 'member': {
+      if(S.sp.mode==='edit'){const u=U(S.sp.uid); Object.assign(S.sp,{name:u.name,phone:u.phone,role:u.role,collector:u.collector});}
+      else { S.sp.mode='add'; Object.assign(S.sp,{name:'',phone:'',role:'member',collector:role()==='collector'?m.id:collectors()[0].id,join:CUR}); }
+      break;
+    }
+    case 'bkinfo': S.sp.name=m.role==='admin'?club.bkash.name:m.name; S.sp.no=m.role==='admin'?club.bkash.no:(m.bkash||''); break;
+    case 'remove': S.sp.uid=S.sp.uid; break;
+  }
+  render();
+}
+function closeSheet(){S.sheet=null;render();}
+function segMethod(){const m=S.sp.method||'Cash';return `<div class="segm"><button class="${m==='Cash'?'on':''}" onclick="setM('Cash')">💵 Cash</button><button class="${m==='bKash'?'on':''}" onclick="setM('bKash')">📱 bKash</button></div>`;}
+function setM(v){S.sp.method=v;renderSheet();}
+function togSel(uid){const a=S.sp.sel||[];S.sp.sel=a.includes(uid)?a.filter(x=>x!==uid):[...a,uid];renderSheet();}
+function setTpl(k){S.sp.msg=TPL[k]??'';renderSheet();}
+function pickShot(el){const f=el.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{S.sp.shot=rd.result;S.sp.ocrState='reading';S.sp.amt='';S.sp.trx='';S.sp.receiver='';S.sp.dateTime='';renderSheet();setTimeout(finishOcr,1500);};rd.readAsDataURL(f);}
+
+/* ----- record payment ----- */
+function sRecord(){
+  const u=U(S.sp.uid), opts=outList(u);
+  return `<div class="grab"></div><div class="h1">Record payment</div>
+  <p class="sub">Confirm that cash or bKash money was received from a member.</p>
+  <div class="field"><label>Member</label><select id="rcUid" onchange="S.sp.uid=this.value;S.sp.month=defMonth(U(this.value));renderSheet()">${payers().map(x=>`<option value="${x.id}" ${x.id===u.id?'selected':''}>${x.name} — ${outSum(x)?fmt(outSum(x))+' due':'Paid up'}</option>`).join('')}</select></div>
+  <div class="field"><label>Month</label><select id="rcMonth" onchange="S.sp.month=+this.value;renderSheet()">${opts.map(i=>`<option value="${i}" ${i===S.sp.month?'selected':''}>${FULL[i]} ${YEAR} · ${fmt(amount(i))}</option>`).join('')||'<option value="">Nothing due</option>'}</select></div>
+  <div class="field"><label>Method</label>${segMethod()}</div>
+  <div class="field" style="display:${S.sp.method==='bKash'?'block':'none'}"><label>bKash Transaction ID</label><input value="${esc(S.sp.trx)}" oninput="S.sp.trx=this.value" placeholder="e.g. BK8N7A2K9X"/></div>
+  <div class="field"><label>Date received</label><input value="${TODAY}" readonly/></div>
+  <button class="btn primary" ${opts.length?'':'disabled'} onclick="doRecord()">✓ Confirm ${fmt(amount(S.sp.month))} received</button>`;
+}
+function doRecord(){
+  const u=U($('rcUid').value), i=+$('rcMonth').value;
+  if(isNaN(i)){toast('Nothing due for this member');return;}
+  const method=S.sp.method||'Cash', trx=(S.sp.trx||'').trim();
+  if(method==='bKash'&&!trx){toast('Enter the bKash Transaction ID');return;}
+  markPaid(u,i,{method,trx:method==='bKash'?trx:'—',date:TODAY,via:'collector'});
+  notify(u.id,'Payment recorded',`${FULL[i]} rent ${fmt(amount(i))} received by ${first(me().name)} via ${method}.`,'ok',{month:i});
+  S.sheet=null; toast(`Recorded ${fmt(amount(i))} from ${u.name}`); render();
+}
+
+/* ----- monthly amount ----- */
+function sAmount(){
+  return `<div class="grab"></div><div class="h1">Monthly collection amount</div>
+  <p class="sub">Amount for <b>${FULL[S.month]} ${YEAR}</b>. This overrides the default share set by admin for this month only.</p>
+  <div class="field"><label>Amount per member (৳)</label><input type="number" value="${esc(S.sp.v)}" oninput="S.sp.v=this.value"/></div>
+  <div class="small muted" style="margin-bottom:12px">Default share: ${fmt(club.defaultShare)} · due day ${club.dueDay}</div>
+  <button class="btn primary" onclick="doAmount()">Save amount</button>`;
+}
+function doAmount(){const v=+S.sp.v; if(!v||v<=0){toast('Enter a valid amount');return;} club.amount[S.month]=v; S.sheet=null; toast(`${FULL[S.month]} amount set to ${fmt(v)}`); render();}
+
+/* ----- notify ----- */
+function notifyPool(i){const base=role()==='admin'?payers():scopeList(me().id);return base.filter(u=>outList(u).includes(i));}
+function sNotify(){
+  const i=S.sp.month??CUR, pool=notifyPool(i), mode=S.sp.mode, sel=S.sp.sel||[];
+  const recips=mode==='bulk'?pool:pool.filter(u=>sel.includes(u.id));
+  const months=[...Array(CUR+1).keys()].reverse();
+  return `<div class="grab"></div><div class="h1">Notify members</div>
+  <p class="sub">Sends an in-app notification with a <b>Pay via bKash</b> button.</p>
+  <div class="seg3"><button class="${mode==='select'?'on':''}" onclick="S.sp.mode='select';renderSheet()">Select members</button><button class="${mode==='bulk'?'on':''}" onclick="S.sp.mode='bulk';renderSheet()">${role()==='admin'?'Bulk: all unpaid':'Bulk: my group'}</button></div>
+  <div class="field"><label>Month</label><select onchange="S.sp.month=+this.value;renderSheet()">${months.map(m=>`<option value="${m}" ${m===i?'selected':''}>${FULL[m]} ${YEAR}</option>`).join('')}</select></div>
+  ${mode==='select'?`<div class="field"><label>Unpaid members (tap to select) · ${pool.length} listed</label><div class="chipwrap">${pool.map(u=>`<button class="chip ${sel.includes(u.id)?'on':''}" onclick="togSel('${u.id}')">${first(u.name)}</button>`).join('')||'<span class="small muted">Everyone has paid this month 🎉</span>'}</div></div>`
+  :`<div class="card info"><b>${pool.length} member(s)</b> will be notified:<div class="small" style="margin-top:6px">${pool.map(u=>first(u.name)).join(', ')||'No unpaid members'}</div></div>`}
+  <div class="field"><label>Template</label><select onchange="setTpl(this.value)"><option value="r1">Reminder</option><option value="r2">Final notice</option><option value="c">Custom</option></select></div>
+  <div class="field"><label>Message · {name} is replaced automatically</label><textarea oninput="S.sp.msg=this.value">${esc(S.sp.msg)}</textarea></div>
+  <button class="btn primary" onclick="doNotify()">Send to ${recips.length} member(s)</button>`;
+}
+function doNotify(){
+  const i=S.sp.month, pool=notifyPool(i);
+  const recips=S.sp.mode==='bulk'?pool:pool.filter(u=>(S.sp.sel||[]).includes(u.id));
+  const msg=(S.sp.msg||'').trim();
+  if(!recips.length){toast('Choose at least one unpaid member');return;}
+  if(!msg){toast('Write a message');return;}
+  recips.forEach(u=>notify(u.id,`${FULL[i]} rent reminder`,msg.replace('{name}',first(u.name)).replace('{month}',FULL[i]),'pay',{month:i}));
+  S.sheet=null; toast(`Notification sent to ${recips.length} member(s)`); render();
+}
+
+/* ----- bKash payment ----- */
+function sBkash(){
+  const m=me(), i=S.sp.month, p=payee(m), ref='RENT-'+MONTHS[i].toUpperCase()+'-'+ini(m.name);
+  return `<div class="grab"></div><div class="h1">Pay rent via bKash</div>
+  <p class="sub">${FULL[i]} ${YEAR} · due ${club.dueDay} ${MONTHS[i]}</p>
+  <div class="amount"><div class="small muted">Amount to send</div><b>${fmt(amount(i))}</b></div>
+  <div class="kv"><span>Send to</span><b>${p.name}</b></div>
+  <div class="kv"><span>bKash number</span><b>${p.no}</b></div>
+  <div class="kv"><span>Reference</span><b>${ref}</b></div>
+  <ol class="steps"><li>Tap <b>Open bKash app</b>. On Android the bKash app opens directly.</li><li>Choose <b>Send Money</b>, enter the number and amount, and add the reference.</li><li>After paying, upload the screenshot here so the collector can confirm.</li></ol>
+  <button class="btn primary" onclick="openBkash()">Open bKash app</button>
+  <button class="btn ghost" onclick="openSheet('upload',{month:${i}})">I've paid · upload screenshot</button>`;
+}
+function openBkash(){toast('Opening bKash app… (Android deep link)');}
+
+/* ----- upload screenshot ----- */
+function sUpload(){
+  const m=me(), opts=outList(m), i=S.sp.month, rs=S.sp.ocrState, scen=S.demoScen||'normal';
+  const scenBtns=[['normal','Normal'],['blur','Unreadable'],['short','Wrong amount'],['dup','Reused TrxID']].map(([k,l])=>`<button class="${scen===k?'on':''}" onclick="S.demoScen='${k}';renderSheet()">${l}</button>`).join('');
+  let box='';
+  if(S.sp.shot){
+    if(rs==='reading') box=`<div class="card info center"><div class="bold">🔍 Reading screenshot…</div><div class="small muted">Finding amount, TrxID and receiver</div></div>`;
+    else if(rs==='failed') box=`<div class="card warn"><b>Couldn't read this screenshot</b><div class="small">Type the amount and TrxID below, or upload a clearer image.</div></div>`;
+    else if(rs==='done') box=`<div class="card ok"><b>✅ Read from screenshot</b><div class="small muted">Check the values. Edit if anything is wrong.</div></div>`;
+  }
+  return `<div class="grab"></div><div class="h1">Upload bKash screenshot</div>
+  <p class="sub">The app reads the amount and TrxID from your screenshot. Your collector then verifies it.</p>
+  <div class="field"><label>Month</label><select onchange="S.sp.month=+this.value;renderSheet()">${opts.map(x=>`<option value="${x}" ${x===i?'selected':''}>${FULL[x]} ${YEAR}</option>`).join('')}</select></div>
+  <div class="field"><label>Payment screenshot</label><label class="dropzone">${S.sp.shot?`<img class="shot" src="${S.sp.shot}" alt="screenshot"/>`:'📷 Tap to choose bKash screenshot<div class="small muted">JPG or PNG</div>'}<input type="file" accept="image/*" style="display:none" onchange="pickShot(this)"/></label></div>
+  ${box}
+  ${S.sp.shot&&rs!=='reading'?`<div class="field"><label>Amount sent (৳)</label><input type="number" value="${esc(S.sp.amt)}" oninput="S.sp.amt=this.value"/></div>
+  <div class="field"><label>bKash Transaction ID</label><input value="${esc(S.sp.trx)}" oninput="S.sp.trx=this.value" placeholder="e.g. BK8N7A2K9X"/></div>
+  <div class="field"><label>Receiver number</label><input value="${esc(S.sp.receiver)}" oninput="S.sp.receiver=this.value"/></div>`:''}
+  <button class="btn primary" onclick="doUpload()">Submit for verification</button>
+  <div class="demo-scen"><div class="small muted">Prototype only · choose what the screenshot reader returns</div><div class="seg-mini">${scenBtns}</div></div>`;
+}
+// Prototype stand-in for the on-device screenshot reader (OCR). Production uses real text recognition.
+function finishOcr(){
+  if(S.sheet!=='upload'||!S.sp.shot) return;
+  const i=S.sp.month, u=me(), scen=S.demoScen||'normal';
+  if(scen==='blur'){S.sp.ocrState='failed';renderSheet();return;}
+  S.sp.amt=scen==='short'?amount(i)-50:amount(i);
+  S.sp.trx=scen==='dup'?reqs[0].trx:'BK'+Math.random().toString(36).slice(2,10).toUpperCase();
+  S.sp.receiver=payee(u).no;
+  S.sp.dateTime='18 Oct 2026, 9:05 PM';
+  S.sp.ocrState='done'; renderSheet();
+}
+function doUpload(){
+  const m=me(), i=S.sp.month;
+  if(!S.sp.shot){toast('Choose a screenshot first');return;}
+  if(S.sp.ocrState==='reading'){toast('Still reading the screenshot…');return;}
+  const amt=+S.sp.amt, trx=(S.sp.trx||'').trim();
+  if(!amt){toast('Enter the amount from the screenshot');return;}
+  if(!trx){toast('Enter the TrxID from the screenshot');return;}
+  const r={id:nid++,uid:m.id,month:i,kind:'screenshot',amount:amt,expected:amount(i),trx,receiver:(S.sp.receiver||'').trim(),dateTime:S.sp.dateTime||'',shot:S.sp.shot,ocr:S.sp.ocrState==='done',msg:'',at:'18 Oct · now',status:'pending'};
+  reqs.push(r);
+  const dup=dupTrx(trx,r.id);
+  notify(m.collector||'u1','New bKash screenshot',`${m.name} · ${FULL[i]} · ${fmt(amt)} · TrxID ${trx}${dup?' ⚠ TrxID already used':''}`,'review',{reqId:r.id});
+  notify(m.id,'Screenshot sent','Your collector will verify the payment and update your status.','info');
+  S.sheet=null; toast('Submitted for verification ✓'); render();
+}
+function dupTrx(trx,exceptId){
+  if(!trx) return null;
+  const rq=reqs.find(r=>r.id!==exceptId&&r.trx===trx&&r.status!=='rejected');
+  if(rq) return U(rq.uid).name+' · '+FULL[rq.month];
+  for(const u of users){ if(u.extra){ for(const k of Object.keys(u.extra)){ if(u.extra[k].trx===trx) return u.name+' · '+FULL[k]; } } }
+  return null;
+}
+
+/* ----- update request ----- */
+function sUpdate(){
+  const m=me(), opts=outList(m), i=S.sp.month;
+  return `<div class="grab"></div><div class="h1">Request status update</div>
+  <p class="sub">Already paid in cash or another way? Ask your collector to update your payment status.</p>
+  <div class="field"><label>Month</label><select onchange="S.sp.month=+this.value;renderSheet()">${opts.map(x=>`<option value="${x}" ${x===i?'selected':''}>${FULL[x]} ${YEAR}</option>`).join('')}</select></div>
+  <div class="field"><label>How did you pay?</label>${segMethod()}</div>
+  <div class="field"><label>Message to collector</label><textarea oninput="S.sp.msg=this.value" placeholder="e.g. I paid cash to Tanvir on 5 Oct">${esc(S.sp.msg)}</textarea></div>
+  <button class="btn primary" onclick="doUpdate()">Send request</button>`;
+}
+function doUpdate(){
+  const m=me(), i=S.sp.month, msg=(S.sp.msg||'').trim();
+  if(!msg){toast('Please write a short message');return;}
+  const method=S.sp.method||'Cash';
+  reqs.push({id:nid++,uid:m.id,month:i,kind:'update',amount:amount(i),trx:'',shot:null,msg:`[${method}] ${msg}`,at:'18 Oct · now',status:'pending'});
+  notify(m.collector||'u1','Status update request',`${m.name}: ${msg}`,'review',{reqId:reqs[reqs.length-1].id});
+  notify(m.id,'Request sent','Your collector has been notified.','info');
+  S.sheet=null; toast('Request sent to collector'); render();
+}
+
+/* ----- can't pay note ----- */
+function sRemark(){
+  const m=me(), opts=outList(m), i=S.sp.month;
+  const reasons=['Traveling','Job / income issue','Family emergency','Other'];
+  return `<div class="grab"></div><div class="h1">Can't pay this month?</div>
+  <p class="sub">Your note is visible to everyone on the club board. The month shows as <b style="color:#92400e">Won't pay</b> until you pay.</p>
+  <div class="field"><label>Month</label><select onchange="S.sp.month=+this.value;renderSheet()">${opts.map(x=>`<option value="${x}" ${x===i?'selected':''}>${FULL[x]} ${YEAR}</option>`).join('')}</select></div>
+  <div class="field"><label>Reason</label><div class="chipwrap">${reasons.map(r=>`<button class="chip ${S.sp.reason===r?'on':''}" onclick="S.sp.reason='${r}';renderSheet()">${r}</button>`).join('')}</div></div>
+  <div class="field"><label>I will pay by (optional)</label><input type="date" value="${esc(S.sp.promise)}" oninput="S.sp.promise=this.value"/></div>
+  <div class="field"><label>Note</label><textarea oninput="S.sp.text=this.value" placeholder="e.g. Salary comes on the 25th">${esc(S.sp.text)}</textarea></div>
+  <button class="btn primary" onclick="doRemark()">Save note</button>`;
+}
+function doRemark(){
+  const u=me(), i=S.sp.month, text=(S.sp.text||'').trim(), reason=S.sp.reason||'';
+  if(!reason&&!text){toast('Choose a reason or write a short note');return;}
+  if(i===undefined||st(u,i)==='paid'){toast('Nothing due for that month');return;}
+  u.notes=u.notes||{};
+  u.notes[i]={reason:reason||'Other',text,promise:fmtDate(S.sp.promise),at:'18 Oct'};
+  notify(u.collector||'u1',`${first(u.name)} won't pay ${MONTHS[i]}`,(reason||'Other')+(text?': '+text:''),'info',{month:i});
+  S.sheet=null; toast('Note saved · visible to all members'); render();
+}
+
+/* ----- review request (staff) ----- */
+function checksOf(r){
+  const u=U(r.uid), expected=r.expected??amount(r.month), p=payee(u);
+  const dup=dupTrx(r.trx,r.id);
+  const last3=s=>String(s||'').replace(/\D/g,'').slice(-3);
+  const amtOk=r.amount===expected, rcvOk=last3(r.receiver)===last3(p.no);
+  return {
+    amt:{ok:amtOk,note:amtOk?'matches due':'due is '+fmt(expected)},
+    trx:{ok:!!r.trx&&!dup,note:!r.trx?'missing':(dup?'already used by '+dup:'unique')},
+    rcv:{ok:rcvOk,note:rcvOk?'matches collector':'different number'},
+    blocking:!amtOk||!!dup||!r.trx
+  };
+}
+function chkRow(label,val,c){return `<tr><td>${label}</td><td><b>${val}</b></td><td class="${c===null?'':(c.ok?'okc':'badc')}">${c===null?'':(c.ok?'✓ ':'✗ ')+esc(c.note)}</td></tr>`;}
+function sReview(){
+  const r=reqs.find(x=>x.id===S.sp.reqId), u=U(r.uid), done=r.status!=='pending';
+  if(r.kind!=='screenshot') return sReviewUpdate(r,u,done);
+  const c=checksOf(r);
+  const reasons=['Amount does not match','TrxID already used','Wrong receiver','Screenshot unclear'];
+  return `<div class="grab"></div><div class="h1">Verify payment</div>
+  <div class="small muted" style="margin-bottom:10px">📷 Screenshot · ${r.at} · ${reqPill(r)}</div>
+  <div class="card" style="margin-bottom:8px"><div class="row"><div class="avatar sm" style="background:${colOf(u)}">${ini(u.name)}</div><div><b>${u.name}</b><div class="small muted">${FULL[r.month]} ${YEAR} · due ${fmt(r.expected??amount(r.month))}</div></div></div></div>
+  <img class="shot" src="${r.shot}" alt="bKash screenshot"/>
+  <div class="small bold" style="margin:10px 0 6px">Read from screenshot</div>
+  <table class="chk"><tr><th>Field</th><th>Value</th><th>Check</th></tr>
+    ${chkRow('Amount',fmt(r.amount),c.amt)}${chkRow('TrxID',esc(r.trx)||'—',c.trx)}${chkRow('Receiver',esc(r.receiver)||'—',c.rcv)}${chkRow('Date / time',esc(r.dateTime)||'—',null)}
+  </table>
+  ${done?`<div class="verdict ${r.status==='confirmed'?'good':'bad'}">${r.status==='confirmed'?'Confirmed and recorded':'Rejected: '+esc(r.reason)}</div><button class="btn ghost" onclick="closeSheet()">Close</button>`
+  :`<div class="verdict ${c.blocking?'bad':'good'}">${c.blocking?'Cannot confirm yet. Fix the failed check or reject the request.':'Key checks passed. Compare with the screenshot, then confirm.'}</div>
+  <label class="check"><input type="checkbox" ${S.sp.vok?'checked':''} onchange="S.sp.vok=this.checked;renderSheet()"/> I checked the screenshot and the details match</label>
+  <button class="btn primary" ${c.blocking?'disabled':''} onclick="doConfirm(${r.id})">✓ Verify & confirm payment</button>
+  <div class="small bold" style="margin:12px 0 6px">Reject with reason</div>
+  <div class="chipwrap">${reasons.map(x=>`<button class="chip ${S.sp.rej===x?'on':''}" onclick="S.sp.rej='${x}';renderSheet()">${x}</button>`).join('')}</div>
+  <div class="field" style="margin-top:8px"><input value="${esc(S.sp.rej)}" oninput="S.sp.rej=this.value" placeholder="Or type a reason"/></div>
+  <button class="btn danger" onclick="doReject(${r.id})">Reject &amp; ask member to re-upload</button>`}`;
+}
+function sReviewUpdate(r,u,done){
+  return `<div class="grab"></div><div class="h1">Update request</div>
+  <div class="small muted" style="margin-bottom:10px">🙋 ${r.at} · ${reqPill(r)}</div>
+  <div class="card"><div class="row"><div class="avatar sm" style="background:${colOf(u)}">${ini(u.name)}</div><div><b>${u.name}</b><div class="small muted">${FULL[r.month]} ${YEAR} · ${fmt(r.amount)}</div></div></div>${r.msg?`<div class="quote">"${esc(r.msg)}"</div>`:''}</div>
+  <div class="noshot">No screenshot attached. Check your records before confirming.</div>
+  ${done?`<div class="verdict ${r.status==='confirmed'?'good':'bad'}">${r.status==='confirmed'?'Confirmed':'Rejected: '+esc(r.reason)}</div>`:`
+  <div class="field"><label>bKash TrxID (if any)</label><input value="${esc(S.sp.trx)}" oninput="S.sp.trx=this.value"/></div>
+  <div class="field"><label>Method received</label>${segMethod()}</div>
+  <label class="check"><input type="checkbox" ${S.sp.vok?'checked':''} onchange="S.sp.vok=this.checked;renderSheet()"/> I verified this payment</label>
+  <button class="btn primary" onclick="doConfirm(${r.id})">✓ Confirm — mark as paid</button>
+  <div class="field" style="margin-top:6px"><input value="${esc(S.sp.rej)}" oninput="S.sp.rej=this.value" placeholder="Reject reason"/></div>
+  <button class="btn danger" onclick="doReject(${r.id})">Reject request</button>`}
+  <button class="btn ghost" onclick="closeSheet()">Close</button>`;
+}
+function doConfirm(id){
+  const r=reqs.find(x=>x.id===id), u=U(r.uid);
+  if(r.kind==='screenshot'){
+    if(checksOf(r).blocking){toast('Resolve the failed check first');return;}
+    if(!S.sp.vok){toast('Tick the verification box first');return;}
+    markPaid(u,r.month,{method:'bKash',amount:r.amount,trx:r.trx,date:r.dateTime||TODAY,receiver:r.receiver,shot:r.shot,via:'screenshot',verifiedBy:first(me().name)+' · '+TODAY});
+  } else {
+    if(!S.sp.vok){toast('Tick the verification box first');return;}
+    const method=S.sp.method||'Cash', trx=(S.sp.trx||'').trim();
+    if(method==='bKash'&&!trx){toast('Enter the bKash TrxID');return;}
+    markPaid(u,r.month,{method,amount:r.expected??amount(r.month),trx:method==='bKash'?trx:'—',date:TODAY,via:'request',verifiedBy:first(me().name)+' · '+TODAY});
+  }
+  r.status='confirmed';
+  notify(u.id,'Payment confirmed ✓',`Your ${FULL[r.month]} rent of ${fmt(r.amount)} was verified by ${me().name}.`,'ok',{month:r.month});
+  S.sheet=null; toast(`${u.name}'s payment confirmed ✓`); go('inbox',{seg:'req'});
+}
+function doReject(id){
+  const r=reqs.find(x=>x.id===id), u=U(r.uid), why=(S.sp.rej||'').trim();
+  if(!why){toast('Write or choose a reason');return;}
+  r.status='rejected'; r.reason=why;
+  notify(u.id,'Payment request rejected',why+'. Please check and upload again or contact your collector.','bad',{month:r.month});
+  S.sheet=null; toast('Rejected · member notified'); go('inbox',{seg:'req'});
+}
+
+/* ----- task (admin) ----- */
+function sTask(){
+  const cs=collectors();
+  return `<div class="grab"></div><div class="h1">Create collection task</div>
+  <p class="sub">Assign a collector to collect unpaid rent from their group.</p>
+  <div class="field"><label>Task title</label><input value="${esc(S.sp.title)}" oninput="S.sp.title=this.value"/></div>
+  <div class="field"><label>Assign to collector</label><select onchange="S.sp.collector=this.value">${cs.map(c=>`<option value="${c.id}" ${c.id===S.sp.collector?'selected':''}>${c.name}</option>`).join('')}</select></div>
+  <div class="field"><label>Month</label><select onchange="S.sp.month=+this.value">${[...Array(CUR+1).keys()].reverse().map(m=>`<option value="${m}" ${m===S.sp.month?'selected':''}>${FULL[m]} ${YEAR}</option>`).join('')}</select></div>
+  <div class="field"><label>Due date</label><input value="${esc(S.sp.due)}" oninput="S.sp.due=this.value"/></div>
+  <button class="btn primary" onclick="doTask()">Create task</button>`;
+}
+function doTask(){
+  const i=S.sp.month, targets=scopeList(S.sp.collector).filter(u=>outList(u).includes(i)).map(u=>u.id);
+  if(!targets.length){toast('No unpaid members in this group');return;}
+  tasks.push({id:nid++,title:S.sp.title||'Collection task',collector:S.sp.collector,month:i,due:S.sp.due,targets});
+  notify(S.sp.collector,'New collection task',`${S.sp.title} · ${targets.length} member(s) · due ${S.sp.due}`,'info');
+  S.sheet=null; toast('Task created and collector notified'); go('collect',{seg:'tasks'});
+}
+
+/* ----- add / edit member ----- */
+function sMember(){
+  const edit=S.sp.mode==='edit', a=role()==='admin';
+  return `<div class="grab"></div><div class="h1">${edit?'Update member':'Add member'}</div>
+  <p class="sub">${edit?'Update name, number'+(a?', role and collector.':'.'):'New member can sign in with this mobile number and OTP.'}</p>
+  <div class="field"><label>Full name</label><input value="${esc(S.sp.name)}" oninput="S.sp.name=this.value" placeholder="e.g. Rafi Islam"/></div>
+  <div class="field"><label>Mobile number</label><input value="${esc(S.sp.phone)}" oninput="S.sp.phone=this.value" placeholder="01XXXXXXXXX" maxlength="11"/></div>
+  ${a?`<div class="field"><label>Role</label><select onchange="S.sp.role=this.value;renderSheet()">${['member','collector','admin'].map(r=>`<option value="${r}" ${r===S.sp.role?'selected':''}>${cap(r)}</option>`).join('')}</select></div>`:''}
+  ${(S.sp.role==='member')?`<div class="field"><label>Assigned collector</label><select onchange="S.sp.collector=this.value">${collectors().map(c=>`<option value="${c.id}" ${c.id===S.sp.collector?'selected':''}>${c.name}</option>`).join('')}</select></div>`:''}
+  ${!edit?`<div class="field"><label>Joined from month</label><select onchange="S.sp.join=+this.value">${MONTHS.slice(0,CUR+1).map((m,k)=>`<option value="${k}" ${k===S.sp.join?'selected':''}>${FULL[k]} ${YEAR}</option>`).join('')}</select></div>`:''}
+  <button class="btn primary" onclick="doMember()">${edit?'Save changes':'Add member'}</button>`;
+}
+function doMember(){
+  const sp=S.sp, name=(sp.name||'').trim(), phone=(sp.phone||'').replace(/\s/g,'');
+  if(!name||!/^01\d{9}$/.test(phone)){toast('Enter name and a valid 11-digit number');return;}
+  if(users.some(u=>u.phone===phone&&u.active&&u.id!==sp.uid)){toast('This number already belongs to a member');return;}
+  const a=role()==='admin';
+  if(sp.mode!=='edit'){
+    const r=a?(sp.role||'member'):'member', join=sp.join??CUR;
+    const h='X'.repeat(join)+'D'.repeat(12-join);
+    users.push({id:'u'+nid++,name,phone,role:r,pays:r!=='admin',active:true,collector:r==='member'?(sp.collector||me().id):null,bkash:r==='collector'?'':null,h:r==='admin'?null:h,notes:{}});
+    S.sheet=null; toast(`${name} added as ${r}`); render(); return;
+  }
+  const u=U(sp.uid); u.name=name; u.phone=phone;
+  if(a){
+    const r=sp.role||u.role; u.role=r; u.pays=r!=='admin';
+    if(r==='member') u.collector=sp.collector||u.collector;
+    if(r!=='member') u.collector=null;
+    if(!u.h&&r!=='admin') u.h='X'.repeat(CUR)+'D'.repeat(12-CUR);
+  }
+  S.sheet=null; toast('Member updated'); render();
+}
+function sRemove(){
+  const u=U(S.sp.uid);
+  return `<div class="grab"></div><div class="h1">Remove ${first(u.name)}?</div>
+  <p class="sub">${u.name} will no longer be able to sign in. Payment history is kept for records.</p>
+  <button class="btn danger" onclick="doRemove()">Yes, remove member</button>
+  <button class="btn ghost" onclick="closeSheet()">Cancel</button>`;
+}
+function doRemove(){const u=U(S.sp.uid); u.active=false; S.sheet=null; toast(`${u.name} removed`); go('members');}
+
+/* ----- bKash info (collector / admin) ----- */
+function sBkinfo(){
+  return `<div class="grab"></div><div class="h1">Update bKash info</div>
+  <p class="sub">${role()==='admin'?'Collectors pay their own rent to this account.':'Members see this number when they pay you.'}</p>
+  <div class="field"><label>Account name</label><input value="${esc(S.sp.name)}" oninput="S.sp.name=this.value"/></div>
+  <div class="field"><label>bKash number</label><input value="${esc(S.sp.no)}" oninput="S.sp.no=this.value"/></div>
+  <button class="btn primary" onclick="doBkinfo()">Save bKash info</button>`;
+}
+function doBkinfo(){const m=me(); if(m.role==='admin'){club.bkash.name=S.sp.name;club.bkash.no=S.sp.no;} else {m.bkash=S.sp.no;} S.sheet=null; toast('bKash info updated'); render();}
+
+/* ================= SCREEN PARTS ================= */
+function hdr(title,sub){
+  const u=me(), n=unread(), go_=u.role==='member'?"go('me')":(u.role==='admin'?"go('setup')":"go('me')");
+  return `<div class="hdr"><div style="min-width:0"><div class="muted small">${sub||''}</div><div class="h1">${title}</div></div>
+  <div class="row" style="gap:8px;flex-shrink:0"><button class="iconbtn" onclick="go('inbox')">🔔${n?`<span class="badge">${n}</span>`:''}</button>
+  <div class="avatar" style="background:${colOf(u)}" onclick="${go_}">${ini(u.name)}</div></div></div>`;
+}
+function monthSwitch(){return `<div class="mswitch"><button onclick="shiftMonth(-1)" ${S.month<=0?'disabled':''}>‹</button><b>${FULL[S.month]} ${YEAR}</b><button onclick="shiftMonth(1)" ${S.month>=CUR?'disabled':''}>›</button></div>`;}
+function segBar(items,active,fn){return `<div class="seg3">${items.map(([k,l])=>`<button class="${active===k?'on':''}" onclick="${fn}('${k}')">${l}</button>`).join('')}</div>`;}
+function heroCard(s,label){const pct=s.exp?Math.round(s.col/s.exp*100):0;return `<div class="card"><div class="small muted">${label} · ${FULL[S.month]}</div><div class="big">${fmt(s.col)} <span>of ${fmt(s.exp)}</span></div><div class="bar"><div style="width:${pct}%"></div></div><div class="row between small" style="margin-top:8px"><span>${pct}% collected</span><span>${s.total} members</span></div></div>`;}
+function tilesOf(s){return `<div class="tiles"><div class="tile g"><b>${s.paid}</b><span>Paid</span></div><div class="tile r"><b>${s.due}</b><span>Due</span></div><div class="tile a"><b>${s.note}</b><span>Won't pay</span></div><div class="tile b"><b>${s.review}</b><span>Review</span></div></div>`;}
+function row(u,i,o={}){
+  const s=st(u,i); let sub;
+  if(s==='paid'){const d=getDet(u,i);sub=`Paid ${fmt(amount(i))} · ${d.method}`;}
+  else if(s==='review') sub='Screenshot under review';
+  else if(s==='note') sub=`Won't pay: ${esc(u.notes[i].reason)}`;
+  else if(s==='na') sub='Joined later';
+  else sub=`${fmt(amount(i))} due · ${outList(u).length} unpaid mo.`;
+  const cn=u.collector?first(U(u.collector).name):'No collector';
+  const click=o.nolink?'':`onclick="openMember('${u.id}')"`;
+  return `<div class="item row" ${click}><div class="avatar sm" style="background:${colOf(u)};cursor:default">${ini(u.name)}</div><div class="grow"><div class="bold">${u.name}</div><div class="small muted">${sub}${o.coll?' · '+cn:''}</div></div>${pill(s)}</div>`;
+}
+function scopeBar(){
+  const r=role();
+  const opts=r==='admin'?[['all','All members']].concat(collectors().map(c=>[c.id,first(c.name)+"'s group"])):[[me().id,'My group'],['all','All members']];
+  const cur=S.scope||defaultScope();
+  return `<div class="chips">${opts.map(([k,l])=>`<button class="chip ${cur===k?'on':''}" onclick="setScope('${k}')">${l}</button>`).join('')}</div>`;
+}
+function rentBlock(u,i){
+  const s=st(u,i), amt=amount(i), p=payee(u), owe=outList(u), mon=`${FULL[i]} ${YEAR}`;
+  if(s==='paid'){const d=getDet(u,i);return `<div class="card ok"><div class="small">${mon}</div><div class="big2">✅ Paid ${fmt(amt)}</div><div class="small">${d.method}${d.trx&&d.trx!=='—'?' · TrxID '+d.trx:''} · ${d.date}</div></div>`;}
+  if(s==='review') return `<div class="card info"><div class="small">${mon}</div><div class="big2">🕓 Under review</div><div class="small">Your screenshot is with ${esc(p.name)}. Status updates after confirmation.</div></div>`;
+  const late=i<CUR||(i===CUR)?`Overdue since ${club.dueDay} ${MONTHS[i]}`:'';
+  if(s==='note') return `<div class="card warn"><div class="small">${mon}</div><div class="big2">📝 You said you won't pay</div><div class="small">${esc(u.notes[i].text)}</div></div><button class="btn ghost" onclick="openSheet('update',{month:${i}})">🙋 I already paid · request update</button>`;
+  return `<div class="card due"><div class="small">${mon} · ${late}</div><div class="big2">⚠️ Due ${fmt(amt)}</div><div class="small">Outstanding: ${fmt(outSum(u))} (${owe.length} month${owe.length>1?'s':''})</div></div>
+  <button class="btn primary" onclick="openSheet('bkash',{month:${i}})">Pay ${fmt(amt)} via bKash</button>
+  <div class="grid2"><button class="btn ghost" onclick="openSheet('upload',{month:${i}})">📎 Upload screenshot</button><button class="btn ghost" onclick="openSheet('remark',{month:${i}})">Can't pay</button></div>
+  <button class="btn ghost" onclick="openSheet('update',{month:${i}})">🙋 I already paid · request update</button>`;
+}
+
+/* ================= SCREENS ================= */
+function loginScreen(){
+  const otp=S.lstep==='otp';
+  return `<div class="login-top"><div class="logo">🏠</div><div class="h1">Club Rent Tracker</div><p class="sub">Sign in with your mobile number</p></div>
+  <div class="card">
+    ${!otp?`<div class="field"><label>Mobile number</label><div class="row" style="gap:8px"><input class="cc" value="+880" readonly/><input id="lPhone" placeholder="01XXXXXXXXX" value="${esc(S.lphone)}" oninput="S.lphone=this.value" style="flex:1;padding:11px 12px;border:1px solid #d1d5db;border-radius:12px;font-size:14px;font-family:inherit"/></div></div>
+    <button class="btn primary" onclick="sendOtp()">Send OTP</button>`
+    :`<div class="small muted center">OTP sent to <b>${esc(S.lphone)}</b> · <a onclick="S.lstep='phone';render()" style="color:var(--p);cursor:pointer">change</a></div>
+    <div class="otprow">${[0,1,2,3].map(k=>`<input class="otp" id="o${k}" maxlength="1" value="${S.otp[k]}" oninput="otpIn(${k},this)"/>`).join('')}</div>
+    <button class="btn primary" onclick="verifyOtp()">Verify &amp; sign in</button>
+    <div class="small muted center">Demo OTP: <b>1234</b></div>`}
+    <label class="check"><input type="checkbox" ${S.stay?'checked':''} onchange="S.stay=this.checked"/> Keep me signed in until I log out</label>
+  </div>
+  <div class="card"><div class="small muted center" style="margin-bottom:8px">Quick demo · sign in as</div>
+    <div class="grid3"><button onclick="quickLogin('admin')">Admin</button><button onclick="quickLogin('collector')">Collector</button><button onclick="quickLogin('member')">Member</button></div></div>
+  <p class="small muted center">Only numbers added by the admin or collector can sign in.</p>`;
+}
+
+function sHome(){
+  const admin=role()==='admin', i=S.month;
+  const list=admin?payers():scopeList(me().id);
+  const s=sumOf(list,i);
+  const pend=reqsFor().filter(r=>r.status==='pending');
+  const attention=list.filter(u=>['due','note','review'].includes(st(u,i))).slice(0,4);
+  if(admin) return hdr('Admin dashboard','Admin')+monthSwitch()+heroCard(sumOf(payers(),i),'Club collection')+tilesOf(sumOf(payers(),i))
+  +(pend.length?`<div class="card info" style="cursor:pointer" onclick="go('inbox')"><b>📥 ${pend.length} payment request(s)</b><div class="small">Screenshots & update requests waiting for review</div></div>`:'')
+  +`<div class="sec"><h3>Collectors</h3></div><div class="list">${collectors().map(c=>collRow(c,i)).join('')}</div>
+  <div class="sec"><h3>Quick actions</h3></div>
+  <div class="grid2"><button class="qa" onclick="openSheet('member',{mode:'add'})">＋ Add member</button><button class="qa" onclick="go('setup')">⚙ Monthly rent setup</button><button class="qa" onclick="go('setup')">🔀 Assign collector</button><button class="qa" onclick="openSheet('task')">📋 Create task</button><button class="qa" onclick="openSheet('notify')">🔔 Notify members</button><button class="qa" onclick="go('collect',{seg:'history'})">🧾 Monthly history</button></div>
+  <div class="sec"><h3>Needs attention</h3><a onclick="go('members')">All members</a></div>
+  <div class="list">${attention.length?attention.map(u=>row(u,i,{coll:true})).join(''):'<div class="item muted center">Everyone has paid 🎉</div>'}</div>`;
+  return hdr('Hi, '+first(me().name),'Collector · '+(list.length)+' members in your group')+monthSwitch()+heroCard(s,'My group collection')+tilesOf(s)
+  +(pend.length?`<div class="card info" style="cursor:pointer" onclick="go('inbox')"><b>📥 ${pend.length} request(s) to review</b><div class="small">Screenshots & update requests from your group</div></div>`:'')
+  +`<div class="grid2"><button class="btn primary" style="margin-bottom:0" onclick="openSheet('record')">＋ Collect payment</button><button class="btn ghost" style="margin-bottom:0" onclick="openSheet('notify')">🔔 Notify members</button></div>
+  <div class="sec" style="margin-top:14px"><h3>Needs attention</h3><a onclick="go('members')">My group</a></div>
+  <div class="list">${attention.length?attention.map(u=>row(u,i)).join(''):'<div class="item muted center">Your group has paid 🎉</div>'}</div>
+  <div class="sec"><h3>My rent · ${FULL[CUR]}</h3></div>${rentBlock(me(),CUR)}`;
+}
+function collRow(c,i){
+  const g=scopeList(c.id), s=sumOf(g,i), pct=s.exp?Math.round(s.col/s.exp*100):0;
+  return `<div class="item" onclick="go('members',{scope:'${c.id}'})"><div class="row between"><b>${c.name}</b><span class="small muted">${g.length} members</span></div><div class="bar" style="margin:8px 0 5px"><div style="width:${pct}%"></div></div><div class="small muted">${fmt(s.col)} of ${fmt(s.exp)} · ${s.due+s.note+s.review} pending</div></div>`;
+}
+
+function sMembers(){
+  const i=S.month, sc=S.scope||defaultScope(), base=scopeList(sc), s=sumOf(base,i);
+  let list=base; if(S.filter!=='all') list=base.filter(u=>st(u,i)===S.filter);
+  const chip=(k,l,c)=>`<button class="chip ${S.filter===k?'on':''}" onclick="setFilter('${k}')">${l} ${c}</button>`;
+  return hdr('Members', role()==='admin'?'Admin':'Collector')+scopeBar()+monthSwitch()
+  +`<div class="chips">${chip('all','All',base.length)}${chip('paid','Paid',s.paid)}${chip('due','Due',s.due)}${chip('note',"Won't pay",s.note)}${chip('review','Review',s.review)}</div>`
+  +`<button class="btn primary" onclick="openSheet('member',{mode:'add'})">＋ Add member</button>`
+  +`<div class="list">${list.length?list.map(u=>row(u,i,{coll:sc==='all'})).join(''):'<div class="item muted center">No members in this view</div>'}</div>`
+  +`<p class="small muted center">Tap a member to see history, record payment, edit or remove.</p>`;
+}
+
+function sCollect(){
+  const seg=S.seg||'collect', r=role();
+  const tabs=r==='admin'?[['collect','Collect'],['history','History'],['tasks','Tasks']]:[['collect','Collect'],['history','History']];
+  let body='';
+  if(seg==='history') body=historyMatrix(scopeList(S.scope||defaultScope()));
+  else if(seg==='tasks') body=tasksView();
+  else body=collectView();
+  return hdr('Collection','Monthly')+segBar(tabs,seg,'setSeg')+body;
+}
+function collectView(){
+  const i=S.month, list=scopeList(S.scope||defaultScope()), s=sumOf(list,i);
+  const unpaid=list.filter(u=>['due','note','review'].includes(st(u,i)));
+  return monthSwitch()+heroCard(s,'Collected')+tilesOf(s)
+  +`<div class="card"><div class="row between"><div><div class="small muted">Amount per member · ${FULL[i]}</div><div class="bold" style="font-size:18px">${fmt(amount(i))}</div></div><button class="btn small ghost" onclick="openSheet('amount')">Set amount</button></div></div>`
+  +scopeBar()
+  +`<div class="grid2"><button class="btn primary" style="margin-bottom:0" onclick="openSheet('record')">＋ Record payment</button><button class="btn ghost" style="margin-bottom:0" onclick="openSheet('notify')">🔔 Notify unpaid</button></div>`
+  +`<div class="sec"><h3>Unpaid · ${unpaid.length}</h3></div>`
+  +`<div class="list">${unpaid.length?unpaid.map(u=>`<div class="item row"><div class="grow" onclick="openMember('${u.id}')"><div class="bold">${u.name}</div><div class="small muted">${st(u,i)==='review'?'Screenshot under review':st(u,i)==='note'?"Won't pay · "+esc(u.notes[i].reason):fmt(amount(i))+' due'}</div></div><button class="btn small primary" onclick="openSheet('record',{uid:'${u.id}',month:${i}})">Collect</button></div>`).join(''):'<div class="item muted center">All paid for this month 🎉</div>'}</div>`;
+}
+function historyMatrix(list){
+  const cells=u=>MONTHS.map((m,i)=>{const s=st(u,i);const t={paid:'✓',due:'✕',note:'!',review:'…',future:'',na:'–'}[s];return `<td class="c ${s}" onclick="cellTap('${u.id}',${i})">${t}</td>`;}).join('');
+  const tot=MONTHS.map((m,i)=>i>CUR?'<td></td>':`<td>${sumOf(list,i).col}</td>`).join('');
+  return `<div class="tbl"><table class="mtx"><tr><th style="text-align:left">Member</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}</tr>
+  ${list.map(u=>`<tr><td class="nm" onclick="openMember('${u.id}')">${first(u.name)}</td>${cells(u)}</tr>`).join('')}
+  <tr class="tot"><td>৳ paid</td>${tot}</tr></table></div>
+  <div class="legend"><span><i style="background:#16a34a"></i>Paid ✓</span><span><i style="background:#dc2626"></i>Due ✕</span><span><i style="background:#d97706"></i>Won't pay !</span><span><i style="background:#2563eb"></i>Review …</span></div>
+  <p class="small muted center">Showing ${list.length} members · tap a name to open profile</p>`;
+}
+function tasksView(){
+  const list=tasks.map(t=>{const done=t.targets.filter(id=>U(id).h[t.month]==='P').length;return {t,done};});
+  return `<button class="btn primary" onclick="openSheet('task')">＋ New collection task</button>`
+  +(list.length?list.map(({t,done})=>{const pct=Math.round(done/t.targets.length*100);return `<div class="card"><div class="bold">${esc(t.title)}</div><div class="small muted" style="margin:4px 0 8px">Collector: ${U(t.collector).name} · ${FULL[t.month]} · due ${t.due}</div><div class="bar"><div style="width:${pct}%"></div></div><div class="row between small" style="margin-top:6px"><span>${done} of ${t.targets.length} collected</span><span class="pill ${pct===100?'g':'a'}">${pct===100?'Done':'Open'}</span></div></div>`;}).join(''):'<div class="card center muted">No tasks yet</div>');
+}
+
+function alertsList(){
+  const list=myNotifs();
+  if(!list.length) return '<div class="card center muted">No alerts</div>';
+  return `<div class="list">${list.map(n=>`<div class="item"><div class="bold">${n.read?'':'<span class="dot2"></span>'}${esc(n.title)}</div><div class="small" style="margin:3px 0 0">${esc(n.body)}</div><div class="small muted">${n.at}</div>
+    ${n.kind==='pay'&&role()==='member'?`<button class="btn small primary" style="margin-top:8px" onclick="openSheet('bkash',{month:${n.month}})">Pay now via bKash</button>`:''}
+    ${n.kind==='review'&&role()!=='member'&&n.reqId?`<button class="btn small ghost" style="margin-top:8px" onclick="openSheet('review',{reqId:${n.reqId}})">Review</button>`:''}</div>`).join('')}</div>`;
+}
+function reqList(){
+  const list=reqsFor(), pend=list.filter(r=>r.status==='pending'), done=list.filter(r=>r.status!=='pending').sort((a,b)=>b.id-a.id);
+  const item=r=>{const u=U(r.uid);const kind=r.kind==='screenshot'?'📷 Screenshot':'🙋 Update request';
+    return `<div class="item row" onclick="openSheet('review',{reqId:${r.id}})">${r.shot?`<img class="thumb" src="${r.shot}" alt=""/>`:'<div class="thumb ph">📝</div>'}<div class="grow"><div class="bold">${u.name}</div><div class="small muted">${kind} · ${FULL[r.month]} · ${fmt(r.amount)}</div><div class="small muted">${r.at}</div></div>${reqPill(r)}</div>`;};
+  return `<div class="sec"><h3>Waiting for review (${pend.length})</h3></div>`+(pend.length?`<div class="list">${pend.map(item).join('')}</div>`:'<div class="card center muted">All caught up 🎉</div>')
+  +(done.length?`<div class="sec"><h3>Reviewed</h3></div><div class="list">${done.map(item).join('')}</div>`:'');
+}
+function sInbox(){
+  const seg=S.seg||'req';
+  return hdr('Requests & alerts',role()==='admin'?'Admin':'Collector')+segBar([['req','Requests'],['alerts','Alerts']],seg,'setSeg')+(seg==='req'?reqList():alertsList());
+}
+function mInbox(){return hdr('Alerts','Member')+alertsList();}
+
+function mHome(){
+  const m=me(), i=CUR, p=payee(m), board=payers();
+  const s=sumOf(board,i);
+  return hdr('Hi, '+first(m.name),'Member')+`<div class="sec" style="margin-top:0"><h3>This month · ${FULL[i]}</h3></div>`+rentBlock(m,i)
+  +`<div class="card"><div class="small muted">Pay to (your collector)</div><div class="bold">${p.name}</div><div class="small">bKash ${p.no}</div></div>`
+  +`<div class="sec"><h3>Club board · ${FULL[i]}</h3></div>
+  <div class="stats3"><div><b style="color:#166534">${s.paid}</b><span>Paid</span></div><div><b style="color:#991b1b">${s.due}</b><span>Due</span></div><div><b style="color:#92400e">${s.note}</b><span>Won't pay</span></div></div>
+  <div class="list">${board.map(u=>row(u,i,{nolink:true})).join('')}</div>`;
+}
+function mHistory(){
+  const m=me(), paidMonths=[];
+  for(let i=CUR;i>=0;i--) if(m.h[i]==='P') paidMonths.push(i);
+  const mine=reqs.filter(r=>r.uid===m.id).sort((a,b)=>b.id-a.id);
+  const grid=MONTHS.map((mo,i)=>{const s=st(m,i);const t={paid:'✓',due:'✕',note:'!',review:'…',future:'',na:'–'}[s];return `<div class="cell ${s}" onclick="cellTap('${m.id}',${i})"><span>${mo}</span><small>${t}</small></div>`;}).join('');
+  const notesHtml=Object.keys(m.notes||{}).map(Number).sort((a,b)=>b-a).map(i=>`<div class="item"><div class="row between"><b>${MONTHS[i]} · ${esc(m.notes[i].reason)}</b><span class="pill a">Won't pay</span></div><div class="small" style="margin-top:4px">${esc(m.notes[i].text)}</div></div>`).join('')||'<div class="item small muted">No notes</div>';
+  return hdr('My payments','Member')
+  +`<div class="stats3"><div><b>${fmt(paidMonths.length*amount(0))}</b><span>Total paid</span></div><div><b class="red" style="color:#dc2626">${fmt(outSum(m))}</b><span>Outstanding</span></div><div><b>${outList(m).length}</b><span>Months unpaid</span></div></div>`
+  +`<div class="sec"><h3>${YEAR} record</h3></div><div class="grid">${grid}</div>
+  <div class="legend"><span><i style="background:#16a34a"></i>Paid</span><span><i style="background:#dc2626"></i>Due</span><span><i style="background:#d97706"></i>Won't pay</span><span><i style="background:#2563eb"></i>Review</span></div>`
+  +`<div class="sec"><h3>Payment history</h3></div><div class="list">${
+    paidMonths.map(i=>{const d=getDet(m,i);return `<div class="item row"><div class="grow"><div class="bold">${FULL[i]} ${YEAR}</div><div class="small muted">${d.method}${d.trx&&d.trx!=='—'?' · TrxID '+d.trx:''} · ${d.date}</div></div><span class="pill g">Confirmed</span></div>`;}).join('')
+    + mine.map(r=>`<div class="item row"><div class="grow"><div class="bold">${FULL[r.month]} ${YEAR} · ${r.kind==='screenshot'?'Screenshot':'Update request'}</div><div class="small muted">${r.status==='rejected'?'Rejected: '+esc(r.reason):r.at}</div></div>${r.status==='pending'?'<span class="pill b">Under review</span>':r.status==='confirmed'?'<span class="pill g">Confirmed</span>':'<span class="pill r">Rejected</span>'}</div>`).join('')
+    || '<div class="item small muted">No payments yet</div>'}</div>`
+  +`<div class="sec"><h3>My notes</h3></div><div class="list">${notesHtml}</div>`
+  +(outList(m).length?`<button class="btn primary" onclick="openSheet('bkash',{month:${defMonth(m)}})">Pay rent via bKash</button><button class="btn ghost" onclick="openSheet('remark',{month:${defMonth(m)}})">I can't pay this month</button>`:'<div class="card ok center">You are up to date ✅</div>');
+}
+
+function sMemberProfile(uid){
+  const u=U(uid); if(!u) return '<div class="card">Member not found</div>';
+  const i=CUR, staff=true;
+  let paidTotal=0; const paidRows=[];
+  for(let k=CUR;k>=0;k--) if(u.h[k]==='P'){paidTotal+=amount(k);const d=getDet(u,k);paidRows.push(`<div class="item row"><div class="grow"><div class="bold">${FULL[k]} ${YEAR}</div><div class="small muted">${d.method}${d.trx&&d.trx!=='—'?' · TrxID '+d.trx:''} · ${d.date}</div></div><b>${fmt(getDet(u,k).amount??amount(k))}</b></div>`);}
+  const grid=MONTHS.map((mo,k)=>{const s=st(u,k);const t={paid:'✓',due:'✕',note:'!',review:'…',future:'',na:'–'}[s];return `<div class="cell ${s}" onclick="cellTap('${u.id}',${k})"><span>${mo}</span><small>${t}</small></div>`;}).join('');
+  const notesHtml=Object.keys(u.notes||{}).map(Number).sort((a,b)=>b-a).map(k=>{const n=u.notes[k];return `<div class="item"><div class="row between"><b>${MONTHS[k]} · ${esc(n.reason)}</b><span class="pill a">Won't pay</span></div><div class="small" style="margin:4px 0">${esc(n.text)}</div><div class="small muted">${n.promise?'Promised: '+n.promise+' · ':''}Posted ${n.at}</div></div>`;}).join('')||'<div class="item small muted">No notes</div>';
+  const cn=u.collector?U(u.collector).name:'—';
+  const owe=outSum(u);
+  return `<div class="hdr-back"><button class="back" onclick="go('members')">‹</button><div class="bold">Member profile</div></div>
+  <div class="card center"><div class="avatar lg" style="background:${colOf(u)};margin:0 auto 8px">${ini(u.name)}</div>
+    <div class="h1" style="font-size:18px">${u.name}</div>
+    <div class="small muted">${cap(u.role)} · ${u.phone}</div>
+    <div class="small muted">Collector: ${cn}</div>
+    ${u.active?'':'<span class="pill r" style="display:inline-block;margin-top:6px">Removed</span>'}
+  </div>
+  <div class="stats3"><div><b>${fmt(paidTotal)}</b><span>Total paid</span></div><div><b style="color:#dc2626">${fmt(owe)}</b><span>Outstanding</span></div><div><b>${outList(u).length}</b><span>Months unpaid</span></div></div>
+  <div class="sec"><h3>${YEAR} payment record</h3></div><div class="grid">${grid}</div>
+  <div class="legend"><span><i style="background:#16a34a"></i>Paid</span><span><i style="background:#dc2626"></i>Due</span><span><i style="background:#d97706"></i>Won't pay</span><span><i style="background:#2563eb"></i>Review</span></div>
+  <div class="sec"><h3>Notes &amp; remarks</h3></div><div class="list">${notesHtml}</div>
+  <div class="sec"><h3>Payment history</h3></div><div class="list">${paidRows.join('')||'<div class="item small muted">No payments yet</div>'}</div>
+  ${owe?`<button class="btn primary" onclick="openSheet('record',{uid:'${u.id}'})">Record payment</button><button class="btn ghost" onclick="openSheet('notify',{mode:'select',sel:['${u.id}']})">🔔 Notify this member</button>`:''}
+  <div class="grid2"><button class="btn ghost" style="margin-bottom:0" onclick="openSheet('member',{mode:'edit',uid:'${u.id}'})">✏️ Edit</button><button class="btn danger" style="margin-bottom:0" onclick="openSheet('remove',{uid:'${u.id}'})">🗑 Remove</button></div>`;
+}
+
+function aSetup(){
+  const mem=users.filter(u=>u.active&&u.role!=='admin');
+  return hdr('Setup','Admin')
+  +`<div class="sec" style="margin-top:0"><h3>Monthly rent setup</h3></div>
+  <div class="card"><div class="field"><label>Default monthly share (৳)</label><input id="sdShare" type="number" value="${club.defaultShare}"/></div>
+    <div class="field"><label>Due day of month</label><input id="sdDue" type="number" min="1" max="28" value="${club.dueDay}"/></div>
+    <button class="btn primary" onclick="saveRent()">Save rent setup</button>
+    <div class="small muted">Applies to every month unless a collector set a different amount for that month.</div></div>
+  <div class="sec"><h3>Collector assignment</h3></div>
+  <div class="list">${mem.map(u=>`<div class="item row"><div class="grow"><div class="bold">${u.name}</div><div class="small muted">${cap(u.role)}</div></div>${u.role==='member'?`<select class="mini-sel" onchange="setCollector('${u.id}',this.value)">${collectors().map(c=>`<option value="${c.id}" ${u.collector===c.id?'selected':''}>${first(c.name)}</option>`).join('')}</select>`:'<span class="pill n">Collector</span>'}</div>`).join('')}</div>
+  <div class="sec"><h3>Club bKash account</h3></div>
+  <div class="card"><div class="small muted" style="margin-bottom:8px">Collectors pay their own rent to this account.</div>
+    <div class="field"><label>Account name</label><input id="sbName" value="${esc(club.bkash.name)}"/></div>
+    <div class="field"><label>bKash number</label><input id="sbNo" value="${esc(club.bkash.no)}"/></div>
+    <button class="btn ghost" onclick="saveClubBkash()">Save bKash info</button></div>
+  <div class="sec"><h3>Team</h3></div>
+  <div class="stats3"><div><b>1</b><span>Admin</span></div><div><b>${collectors().length}</b><span>Collectors</span></div><div><b>${users.filter(u=>u.role==='member'&&u.active).length}</b><span>Members</span></div></div>
+  <button class="btn ghost" onclick="openSheet('member',{mode:'add'})">＋ Add member</button>
+  <button class="btn ghost" onclick="go('members')">👥 Manage members</button>
+  <button class="btn danger" onclick="logout()">Log out</button>`;
+}
+function saveRent(){club.defaultShare=+$('sdShare').value||200; club.dueDay=+$('sdDue').value||10; toast('Monthly rent setup saved');}
+function saveClubBkash(){club.bkash.name=$('sbName').value; club.bkash.no=$('sbNo').value; toast('Club bKash info saved');}
+function setCollector(uid,val){U(uid).collector=val; toast('Collector assigned'); render();}
+
+function meScreen(){
+  const m=me(), isC=m.role==='collector';
+  const rows = isC
+    ? `<div class="card"><div class="bold">My bKash account</div><div class="small" style="margin:6px 0">${esc(m.bkash)}</div><div class="small muted">Members see this number when they pay you.</div><button class="btn ghost" style="margin-top:10px" onclick="openSheet('bkinfo')">Update bKash info</button></div>`
+    : `<div class="card"><div class="bold">Pay to (your collector)</div><div class="small" style="margin:6px 0">${payee(m).name}</div><div class="small">bKash ${payee(m).no}</div></div>`;
+  return hdr('Profile',cap(m.role))
+  +`<div class="card row"><div class="avatar" style="background:${colOf(m)};cursor:default">${ini(m.name)}</div><div class="grow"><div class="bold">${m.name}</div><div class="small muted">${m.phone} · ${cap(m.role)}</div></div></div>`
+  +rows
+  +`<div class="sec"><h3>Preferences</h3></div>
+  <div class="list"><div class="item row"><div class="grow">Keep me signed in</div><input type="checkbox" ${S.stay?'checked':''} onchange="S.stay=this.checked;saveSession()"/></div><div class="item row"><div class="grow">Notifications</div><span class="small muted">On</span></div><div class="item row"><div class="grow">Language</div><span class="small muted">English / বাংলা</span></div></div>
+  <button class="btn danger" onclick="logout()">Log out</button>`;
+}
+
+function screenHTML(){
+  const r=role();
+  switch(S.route){
+    case 'home': return r==='member'?mHome():sHome();
+    case 'members': return sMembers();
+    case 'collect': return sCollect();
+    case 'history': return mHistory();
+    case 'inbox': return r==='member'?mInbox():sInbox();
+    case 'setup': return aSetup();
+    case 'me': return meScreen();
+    case 'member': return sMemberProfile(S.pid||'u5');
+  }
+  return '';
+}
+function sheetHTML(){
+  switch(S.sheet){
+    case 'record': return sRecord(); case 'amount': return sAmount(); case 'notify': return sNotify();
+    case 'bkash': return sBkash(); case 'upload': return sUpload(); case 'update': return sUpdate();
+    case 'remark': return sRemark(); case 'review': return sReview(); case 'task': return sTask();
+    case 'member': return sMember(); case 'remove': return sRemove(); case 'bkinfo': return sBkinfo();
+  }
+  return '';
+}
+
+/* ================= RENDER ================= */
+function renderSheet(){
+  const ov=$('overlay');
+  if(S.sheet&&me()){ov.style.display='block';$('sheet').innerHTML=sheetHTML();}
+  else ov.style.display='none';
+}
+function navOn(k){
+  if(k==='history') return (S.route==='history')||(S.route==='collect'&&S.seg==='history');
+  if(k==='collect') return S.route==='collect'&&S.seg!=='history';
+  if(k==='inbox') return S.route==='inbox';
+  return S.route===k&&!S.sheet;
+}
+function renderLeft(){
+  const u=me(); let h=`<h1>Club Rent Tracker</h1><p class="sub">Clickable prototype · login + 3 roles (Admin, Collector, Member).</p>
+  <div class="label">Demo accounts</div><div class="grid3" style="grid-template-columns:1fr 1fr 1fr">
+  <button onclick="quickLogin('admin')">Admin</button><button onclick="quickLogin('collector')">Collector</button><button onclick="quickLogin('member')">Member</button></div>`;
+  if(u){
+    const r=u.role;
+    h+=`<div class="label">${cap(r)} screens</div>`+NAVS[r].map(([k,l])=>{const idx=NAVS[r].findIndex(x=>x[0]===k)+1;return `<button class="nav-btn ${navOn(k)?'on':''}" onclick="jumpNav('${k}')"><span class="n">${idx}</span>${l}</button>`;}).join('')
+    +`<div class="label">Pop-ups (${cap(r)})</div>`+POPUPS[r].map(([k,l])=>`<button class="nav-btn ${S.sheet===k?'on':''}" onclick="openSheet('${k}')"><span class="n">＋</span>${l}</button>`).join('')
+    +`<button class="btn danger" style="margin-top:12px" onclick="logout()">Log out</button>`;
+  } else {
+    h+=`<div class="label">Screens</div><button class="nav-btn on"><span class="n">1</span>Login page</button>
+    <p class="sub" style="margin-top:12px">Mobile number + OTP for every role (demo OTP <b>1234</b>). The number decides the role. The session stays on this device until Log out.</p>`;
+  }
+  $('left').innerHTML=h;
+}
+const INFO={
+  login:{t:'Login page',d:'One login for all roles. Enter mobile number, get OTP, sign in. The role is set by the admin when the account is created.',b:['Mobile + OTP for every role','"Keep me signed in" is ON by default','Quick demo buttons: Admin, Collector, Member']},
+  'home:admin':{t:'Admin dashboard',d:'Club-wide collection, each collector\'s progress, pending requests and quick setup actions.',b:['Admin can do everything a collector can do','Monthly rent, collector assignment and bKash account live in Setup','Collection tasks are created and assigned here']},
+  'home:collector':{t:'Collector home',d:'Progress for your group, record a payment, notify members, review requests and pay your own rent.',b:['Notify specific members or bulk-notify all unpaid','Members who get a reminder can tap Pay via bKash','Requests (screenshots) arrive in your Inbox']},
+  'home:member':{t:'Member home',d:'Your status for this month with Pay via bKash, Upload screenshot and Request update buttons, plus the club board.',b:['Pay via bKash opens the bKash app (Android deep link)','Upload screenshot → collector confirms','Request update if you paid in cash or another way']},
+  members:{t:'Members',d:'Add, edit and remove members. Filter by status and group. Everyone can see who has paid; only admin/collector edit.',b:['Admin sees all groups; collector sees My group or All','Remove keeps payment history for records','Tap a member for full profile']},
+  collect:{t:'Collect · monthly',d:'Record a cash or bKash payment, set the monthly collection amount, and notify unpaid members.',b:['Monthly amount overrides default share for that month','History tab shows every member by month','Admin also has Tasks: assign collection work to a collector']},
+  history:{t:'Monthly payment history',d:'Matrix of all members across the year. Green paid, red due, amber won\'t pay, blue under review.',b:['Scroll sideways to see more months','Tap a name for the full profile']},
+  inbox:{t:'Requests & alerts',d:'Payment screenshots and update requests from members. Review, confirm the payment, or reject with a reason.',b:['Confirm updates status for the member instantly','Rejected requests notify the member with the reason']},
+  setup:{t:'Admin setup',d:'Set monthly rent share and due day, assign collectors to members, and manage the club bKash account.',b:['Changing collector reassigns the member\'s payments and notifications','Collectors pay to the club account']},
+  me:{t:'Profile',d:'Collector can update the bKash number members see. Anyone can log out here.',b:['Session stays signed in until Log out','Preferences: keep signed in, notifications, language']},
+  member:{t:'Member profile',d:'Full 12-month record, notes, payment history and actions for one member.',b:['Record payment, notify, edit or remove','Green ✓ paid · red ✕ due · amber ! won\'t pay']},
+  'sheet:record':{t:'Record payment',d:'Choose member → month → Cash or bKash. bKash needs a Transaction ID. Member gets a confirmation.',b:['Only unpaid months are offered']},
+  'sheet:notify':{t:'Notify members',d:'Pick specific members or a bulk group. Each notification includes a Pay via bKash button on the member\'s phone.',b:['Template messages can be edited','{name} is filled in automatically']},
+  'sheet:bkash':{t:'Pay via bKash',d:'Shows the amount, the collector\'s bKash number and a reference. The Open bKash app button uses an Android deep link (to test on device).',b:['Then upload the screenshot to get confirmed']},
+  'sheet:upload':{t:'Upload screenshot',d:'Member attaches the bKash screenshot. The app reads the amount, TrxID and receiver and fills them in. The member checks the values, then submits.',b:['Unreadable screenshot → member types the values','Prototype: the demo buttons show each reader result','Wrong or reused values are caught at verification']},
+  'sheet:update':{t:'Request status update',d:'Member paid in cash or another way and asks the collector to update status. The collector is notified.',b:['Request appears in Requests with a message']},
+  'sheet:remark':{t:"Can't pay this month",d:'Member posts a note with reason, optional promise date and text. Visible to the club; collector is notified.',b:['Month shows as amber Won\'t pay']},
+  'sheet:review':{t:'Verify payment',d:'Collector compares the screenshot with the values the app read: amount vs due, TrxID not used before, receiver is the collector\'s number. Confirm only when all checks pass.',b:['Amount mismatch or reused TrxID blocks confirmation','Rejecting sends the reason to the member to re-upload','Confirmed payments store amount, TrxID, receiver and screenshot']},
+  'sheet:task':{t:'Collection task',d:'Admin assigns collection work to a collector for the unpaid members of their group.',b:['Progress updates as payments are recorded']},
+  'sheet:member':{t:'Add / update member',d:'Name, mobile number, role, assigned collector and joining month. Admin can set role and collector; collector can update basic details.',b:['A new member can sign in right after being added']},
+  'sheet:remove':{t:'Remove member',d:'Removes sign-in access. Payment history is kept so the ledger stays correct.',b:['Asks for confirmation first']},
+  'sheet:bkinfo':{t:'Update bKash info',d:'Collector updates the bKash number that members use when paying.',b:['Changes appear on member Pay screens immediately']},
+  'sheet:amount':{t:'Monthly collection amount',d:'Set the per-member amount for the selected month, for example if the rent changed this month.',b:['Defaults to the admin\'s share']}
+};
+function renderInfo(){
+  const key=S.sheet?'sheet:'+S.sheet:(!me()?'login':(S.route==='home'?'home:'+role():S.route));
+  const I=INFO[key]||INFO.login;
+  $('info').innerHTML=`<h3>${I.t}</h3><p>${I.d}</p><ul>${I.b.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="label" style="margin-top:18px">Access by role</div>
+  <p style="font-size:12.5px;line-height:1.6"><b>Admin:</b> everything, plus rent setup, collector assignment, tasks, club bKash.<br/><b>Collector:</b> own group + all history, collect, notify, review requests, own bKash info.<br/><b>Member:</b> own history, pay via bKash, upload screenshot, request update, alerts.</p>`;
+}
+function render(){
+  const logged=!!me();
+  $('screen').innerHTML=logged?screenHTML():loginScreen();
+  const tb=$('tabbar');
+  tb.style.display=logged?'flex':'none';
+  if(logged){
+    const tabOn=k=>S.route===k||(S.route==='member'&&k==='members');
+    tb.innerHTML=TABS[role()].map(([k,ic,l])=>`<button class="tab ${tabOn(k)?'on':''}" onclick="go('${k}')"><i>${ic}</i>${l}${k==='inbox'&&unread()?`<span class="tbadge">${unread()}</span>`:''}</button>`).join('');
+  }
+  renderLeft(); renderInfo(); renderSheet();
+}
+
+/* ================= BOOT ================= */
+(function boot(){
+  const saved=readSession();
+  if(saved&&U(saved)&&U(saved).active){ S.uid=saved; S.route='home'; S.scope=defaultScope(); }
+  render();
+})();
+</script>
+</body>
+</html>

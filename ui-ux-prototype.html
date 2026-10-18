@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Club Rent Tracker – UI/UX Prototype</title>
+<style>
+:root{--p:#0f766e;--pl:#e6f4f1;--g:#16a34a;--gl:#dcfce7;--r:#dc2626;--rl:#fee2e2;--a:#d97706;--al:#fef3c7;--t:#1f2937;--m:#6b7280;--bg:#f6f8f7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",Arial,sans-serif;background:#e4ebe8;color:var(--t);min-height:100vh}
+.layout{display:grid;grid-template-columns:250px 414px 300px;gap:28px;padding:28px;justify-content:center;align-items:start}
+.panel{background:#fff;border-radius:16px;padding:20px;position:sticky;top:28px}
+.panel h1{font-size:17px;color:var(--p)}
+.sub{font-size:12.5px;color:var(--m);margin:4px 0 14px;line-height:1.5}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--m);margin:16px 0 6px;font-weight:700}
+.nav-btn{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:8px 10px;border:0;background:none;border-radius:10px;font-size:14px;cursor:pointer;color:#374151;margin-bottom:2px}
+.nav-btn .n{width:22px;height:22px;border-radius:50%;background:#eef2f1;font-size:11px;display:grid;place-items:center;font-weight:700;color:var(--m);flex-shrink:0}
+.nav-btn.on{background:var(--pl);color:var(--p);font-weight:600}
+.nav-btn.on .n{background:var(--p);color:#fff}
+.seg-role{display:flex;background:#f1f5f4;border-radius:10px;padding:4px}
+.seg-role button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--m)}
+.seg-role button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12);color:var(--p);font-weight:600}
+.info h3{font-size:15px;margin-bottom:8px}
+.info p{font-size:13.5px;line-height:1.6;color:#374151}
+.info ul{margin:10px 0 0 18px;font-size:13px;line-height:1.7;color:#374151}
+/* phone */
+.phone{width:390px;height:820px;background:#fff;border-radius:44px;border:12px solid #111827;position:relative;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.28);display:flex;flex-direction:column}
+.status{height:40px;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font-size:13px;font-weight:700;flex-shrink:0;background:#fff}
+.screen{flex:1;overflow-y:auto;background:var(--bg);padding:6px 16px 24px}
+.screen::-webkit-scrollbar{width:0}
+.tabbar{height:70px;display:flex;justify-content:space-around;align-items:flex-start;padding-top:8px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}
+.tab{background:none;border:0;font-size:11px;color:var(--m);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;width:72px}
+.tab i{font-style:normal;font-size:19px}
+.tab.on{color:var(--p);font-weight:700}
+/* components */
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 2px 12px}
+.hdr-back{display:flex;align-items:center;gap:10px;padding:4px 0 12px}
+.back{width:36px;height:36px;border-radius:50%;background:#fff;border:0;font-size:20px;cursor:pointer;color:var(--t)}
+.h1{font-size:20px;font-weight:800}
+.muted{color:var(--m)}.small{font-size:12px}.bold{font-weight:600}.center{text-align:center}
+.grow{flex:1}.red{color:var(--r)}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card.ok{background:var(--gl)}.card.warn{background:var(--al)}.card.due{background:var(--rl)}
+.big{font-size:28px;font-weight:800;margin:4px 0 10px}
+.big span{font-size:14px;color:var(--m);font-weight:500}
+.big2{font-size:22px;font-weight:800;margin:4px 0}
+.bar{height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+.bar div{height:100%;background:linear-gradient(90deg,#14b8a6,var(--p));border-radius:99px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tile{border-radius:14px;padding:12px 6px;text-align:center}
+.tile b{display:block;font-size:20px}
+.tile span{font-size:11.5px}
+.tile.g{background:var(--gl);color:#166534}.tile.r{background:var(--rl);color:#991b1b}.tile.a{background:var(--al);color:#92400e}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stats3 div{background:#fff;border-radius:14px;padding:10px 6px;text-align:center}
+.stats3 b{display:block;font-size:15px}
+.stats3 span{font-size:11px;color:var(--m)}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;background:#eef2f1;color:var(--t);margin-bottom:10px;text-align:center}
+.btn.primary{background:var(--p);color:#fff}
+.btn.ghost{background:#fff;border:1px solid #d1d5db}
+.btn.small{width:auto;display:inline-block;padding:9px 14px;font-size:13px;margin:0}
+.btn.danger{background:var(--rl);color:#991b1b}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.sec{display:flex;justify-content:space-between;align-items:center;margin:16px 2px 8px}
+.sec h3{font-size:14px}
+.sec a{font-size:13px;color:var(--p);cursor:pointer;font-weight:600}
+.mswitch{display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:14px;padding:6px;margin-bottom:12px}
+.mswitch button{width:36px;height:36px;border:0;border-radius:10px;background:var(--pl);color:var(--p);font-size:20px;cursor:pointer}
+.mswitch button:disabled{opacity:.3}
+.mswitch b{font-size:14.5px}
+.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px}
+.chip{border:1px solid #d1d5db;background:#fff;border-radius:99px;padding:7px 13px;font-size:13px;white-space:nowrap;cursor:pointer;color:#374151}
+.chip.on{background:var(--p);border-color:var(--p);color:#fff}
+.list{background:#fff;border-radius:18px;overflow:hidden;margin-bottom:12px}
+.item{padding:12px 14px;border-bottom:1px solid #f0f2f1;cursor:pointer;font-size:14px}
+.item:last-child{border-bottom:0}
+.avatar{width:42px;height:42px;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px;flex-shrink:0}
+.avatar.sm{width:36px;height:36px;font-size:12px}
+.avatar.lg{width:72px;height:72px;font-size:24px}
+.pill{font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.pill.g{background:var(--gl);color:#166534}.pill.r{background:var(--rl);color:#991b1b}.pill.a{background:var(--al);color:#92400e}.pill.n{background:#f3f4f6;color:var(--m)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.cell{border-radius:12px;padding:9px 0;text-align:center;cursor:pointer;font-size:12px;font-weight:700;background:#fff;border:1px solid #e5e7eb}
+.cell small{display:block;font-size:13px;margin-top:2px}
+.cell.paid{background:var(--gl);color:#166534;border-color:#bbf7d0}
+.cell.due{background:var(--rl);color:#991b1b;border-color:#fecaca}
+.cell.note{background:var(--al);color:#92400e;border-color:#fde68a}
+.cell.future{color:#9ca3af;background:#f9fafb}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--m);margin-bottom:6px;justify-content:center}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.act{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f2f1;font-size:13px}
+.act:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--p);margin-top:6px;flex-shrink:0}
+.mini{font-size:11px;background:#f1f5f4;border-radius:6px;padding:2px 6px;margin-right:4px;display:inline-block;margin-top:4px}
+.hero .big{margin-bottom:10px}
+/* login */
+.logo{width:76px;height:76px;border-radius:24px;background:var(--p);color:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:34px}
+.otp{width:52px;height:56px;text-align:center;font-size:22px;border:1px solid #d1d5db;border-radius:12px;font-family:inherit}
+/* sheet */
+.overlay{position:absolute;inset:0;z-index:10}
+.scrim{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:12px 18px 22px;max-height:88%;overflow-y:auto}
+.sheet::-webkit-scrollbar{width:0}
+.grab{width:40px;height:5px;border-radius:9px;background:#d1d5db;margin:0 auto 12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12.5px;color:var(--m);margin-bottom:6px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px;font-size:14.5px;font-family:inherit;background:#fff;color:var(--t)}
+.field textarea{min-height:80px;resize:none}
+.segm{display:grid;grid-template-columns:1fr 1fr;background:#f1f5f4;padding:4px;border-radius:12px}
+.segm button{border:0;background:none;padding:10px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;color:var(--m)}
+.segm button.on{background:#fff;color:var(--p);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.amount{background:var(--pl);border-radius:14px;padding:12px;text-align:center;margin-bottom:14px}
+.amount b{font-size:30px;color:var(--p)}
+.toast{position:absolute;left:20px;right:20px;top:54px;background:#111827;color:#fff;padding:12px 14px;border-radius:12px;font-size:13.5px;z-index:30;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- LEFT: screen navigator -->
+  <aside class="panel">
+    <h1>Club Rent Tracker</h1>
+    <p class="sub">UI/UX prototype · click any screen. Tap items inside the phone to interact.</p>
+    <div class="label">View as</div>
+    <div class="seg-role">
+      <button data-r="collector" onclick="setRole('collector')">Collector</button>
+      <button data-r="member" onclick="setRole('member')">Member</button>
+    </div>
+    <div class="label">Screens</div>
+    <button class="nav-btn" data-k="login" onclick="jump('login')"><span class="n">1</span>Login (OTP)</button>
+    <button class="nav-btn" data-k="home" onclick="jump('home')"><span class="n">2</span>Home dashboard</button>
+    <button class="nav-btn" data-k="members" onclick="jump('members')"><span class="n">3</span>Members · month status</button>
+    <button class="nav-btn" data-k="detail" onclick="jump('detail')"><span class="n">4</span>Member profile &amp; history</button>
+    <button class="nav-btn" data-k="collect" onclick="jump('collect')"><span class="n">5</span>Collect payment</button>
+    <button class="nav-btn" data-k="remark" onclick="jump('remark')"><span class="n">6</span>"Can't pay" note</button>
+    <button class="nav-btn" data-k="dues" onclick="jump('dues')"><span class="n">7</span>Dues &amp; ledger</button>
+    <button class="nav-btn" data-k="me" onclick="jump('me')"><span class="n">8</span>Settings / My account</button>
+  </aside>
+
+  <!-- CENTER: phone -->
+  <main>
+    <div class="phone" id="phone">
+      <div class="status"><span>9:41</span><span>▮▮▮ 5G ▭</span></div>
+      <div class="toast" id="toast"></div>
+      <div class="screen" id="screen"></div>
+      <nav class="tabbar" id="tabbar"></nav>
+      <div class="overlay" id="overlay" style="display:none"><div class="scrim" onclick="closeSheet()"></div><div class="sheet"></div></div>
+    </div>
+  </main>
+
+  <!-- RIGHT: explanation -->
+  <aside class="panel info" id="info"></aside>
+</div>
+
+<script>
+/* ---------- DATA (sample) ---------- */
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CUR=9, YEAR=2026, RENT=200, ME=3;          // Oct 2026, logged-in member = Sabbir
+const COLORS=['#0f766e','#7c3aed','#db2777','#2563eb','#ea580c','#0891b2','#65a30d','#9333ea','#be123c','#4f46e5'];
+// h = 12-char status string: P = paid, D = due
+const members=[
+ {id:1,name:'Rahim Uddin',h:'PPPPPPPPPP'},
+ {id:2,name:'Karim Hossain',h:'PPPPDPPPPP'},
+ {id:3,name:'Sabbir Ahmed',h:'PPPPPPPPPD'},
+ {id:4,name:'Tanvir Hasan',h:'PPPPPPPPPP'},   // collector
+ {id:5,name:'Imran Khan',h:'PPPPPPPPPD',notes:{9:{reason:'Traveling',text:'Going to Sylhet for family work. Will pay after 10 days.',promise:'28 Oct',at:'16 Oct'}}},
+ {id:6,name:'Fahim Chowdhury',h:'PDPDPPDDDD',notes:{1:{reason:'Job issue',text:'Salary delayed this month.',promise:'',at:'4 Feb'}}},
+ {id:7,name:'Nabil Sarker',h:'PPPPPPPPPP'},
+ {id:8,name:'Shakil Mia',h:'PPPPPPPPPP'},
+ {id:9,name:'Rafi Islam',h:'PPPPPPPPPP'},
+ {id:10,name:'Arif Rahman',h:'PPPPPPPPPP'}
+];
+let activity=[
+ {text:'Karim Hossain paid ৳200 · bKash',time:'Today, 9:14 AM'},
+ {text:'Imran Khan posted a note: won\'t pay in October',time:'Today, 8:02 AM'},
+ {text:'Rafi Islam paid ৳200 · Cash',time:'Yesterday'},
+ {text:'Arif Rahman paid ৳200 · bKash',time:'Yesterday'}
+];
+const TABS=[['home','🏠','Home'],['members','👥','Members'],['dues','📒','Dues'],['me','⚙️','Me']];
+
+/* ---------- STATE ---------- */
+let S={role:'collector',screen:'login',mid:null,filter:'all',month:CUR,sheet:null,sheetMid:null,sheetMonth:null,method:'Cash',reason:''};
+
+/* ---------- HELPERS ---------- */
+const fmt=n=>'৳'+n.toLocaleString('en-US');
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ini=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
+const col=id=>COLORS[(id-1)%COLORS.length];
+function status(m,i){
+  if(i>CUR) return 'future';
+  if(m.h[i]==='P') return 'paid';
+  if(m.notes&&m.notes[i]) return 'note';
+  return 'due';
+}
+function getDet(m,i){
+  if(m.extra&&m.extra[i]) return m.extra[i];
+  const s=m.id*31+i*17;
+  const cash=s%3===0;
+  return {method:cash?'Cash':'bKash', trx:cash?'—':'BK'+((s*104729)%1000000000).toString(36).toUpperCase().padStart(8,'0'), date:(1+s%27)+' '+MONTHS[i]+' '+YEAR};
+}
+function outList(m){const a=[];for(let i=0;i<=CUR;i++) if(m.h[i]!=='P') a.push(i);return a;}
+function defMonth(m){ if(m.h[CUR]!=='P') return CUR; const l=outList(m); return l.length?l[l.length-1]:CUR; }
+function summary(i){
+  let p=0,d=0,n=0;
+  members.forEach(m=>{const s=status(m,i); if(s==='paid')p++; else if(s==='note')n++; else d++;});
+  return {p,d,n,collected:p*RENT,expected:members.length*RENT};
+}
+function pill(s){
+  const map={paid:['g','Paid'],due:['r','Due'],note:['a',"Won't pay"],future:['n','—']};
+  const [c,t]=map[s]; return `<span class="pill ${c}">${t}</span>`;
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+/* ---------- NAVIGATION / ACTIONS ---------- */
+function go(screen,opts){ Object.assign(S,opts||{}); S.screen=screen; S.sheet=null; render(); }
+function jump(k){
+  if(k==='collect'){S.role='collector'; go('home'); openSheet('collect'); return;}
+  if(k==='remark'){S.role='member'; go('home'); openSheet('remark'); return;}
+  if(k==='detail'){go('detail',{mid:6}); return;}
+  go(k);
+}
+function setRole(r){ S.role=r; S.sheet=null; if(S.screen==='login') S.screen='home'; render(); }
+function openMember(id){ go('detail',{mid:id}); }
+function shiftMonth(d){ S.month=Math.max(0,Math.min(CUR,S.month+d)); render(); }
+function setFilter(f){ S.filter=f; render(); }
+function cellTap(mid,i){
+  const m=members.find(x=>x.id===mid); const st=status(m,i);
+  const lab={paid:'Paid',due:'Due',note:"Won't pay (note saved)",future:'Upcoming'}[st];
+  toast(`${FULL[i]}: ${lab}`);
+}
+function openSheet(kind,mid){
+  S.sheet=kind;
+  if(kind==='collect'){
+    const cand = mid ? members.find(m=>m.id===mid) : (members.find(m=>status(m,CUR)!=='paid') || members[0]);
+    S.sheetMid=cand.id; S.sheetMonth=defMonth(cand); S.method='Cash';
+  } else {
+    S.sheetMid=ME; S.reason=''; S.sheetMonth=defMonth(members.find(m=>m.id===ME));
+  }
+  render();
+}
+function closeSheet(){ S.sheet=null; render(); }
+function sheetMemberChange(){
+  const id=+document.getElementById('pMember').value;
+  S.sheetMid=id; S.sheetMonth=defMonth(members.find(m=>m.id===id)); render();
+}
+function setMethod(v){
+  S.method=v;
+  document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===v));
+  const w=document.getElementById('trxWrap'); if(w) w.style.display=v==='bKash'?'block':'none';
+}
+function setReason(r){
+  S.reason=r;
+  document.querySelectorAll('[data-r]').forEach(b=>{ if(b.closest('.sheet')) b.classList.toggle('on',b.dataset.r===r); });
+}
+function confirmPayment(){
+  const id=+document.getElementById('pMember').value, mo=+document.getElementById('pMonth').value;
+  const trx=(document.getElementById('pTrx')||{value:''}).value.trim();
+  if(S.method==='bKash' && !trx){ toast('Please enter the bKash Transaction ID'); return; }
+  const m=members.find(x=>x.id===id);
+  m.h=m.h.slice(0,mo)+'P'+m.h.slice(mo+1);
+  m.extra=m.extra||{}; m.extra[mo]={method:S.method,trx:S.method==='bKash'?trx:'—',date:'18 Oct 2026'};
+  if(m.notes) delete m.notes[mo];
+  activity.unshift({text:`Tanvir recorded ${fmt(RENT)} from ${m.name} · ${MONTHS[mo]} · ${S.method}`,time:'Just now'});
+  S.month=mo; toast(`Payment recorded for ${m.name} ✓`);
+  go('members');
+}
+function saveNote(){
+  const mo=+document.getElementById('rMonth').value, m=members.find(x=>x.id===S.sheetMid);
+  const text=document.getElementById('rText').value.trim(), dv=document.getElementById('rDate').value;
+  if(!S.reason && !text){ toast('Choose a reason or write a short note'); return; }
+  if(isNaN(mo) || m.h[mo]==='P'){ toast('No unpaid month to add a note for'); return; }
+  let promise='';
+  if(dv){ const d=new Date(dv); promise=d.getDate()+' '+MONTHS[d.getMonth()]; }
+  m.notes=m.notes||{};
+  m.notes[mo]={reason:S.reason||'Other',text,promise,at:'18 Oct'};
+  activity.unshift({text:`${m.name} posted a note: can't pay ${MONTHS[mo]}`,time:'Just now'});
+  S.month=mo; toast('Note saved · visible to all members');
+  go(S.role==='member'?'home':'members');
+}
+
+/* ---------- SCREENS ---------- */
+function monthSwitch(){
+  return `<div class="mswitch"><button onclick="shiftMonth(-1)" ${S.month<=0?'disabled':''}>‹</button><b>${FULL[S.month]} ${YEAR}</b><button onclick="shiftMonth(1)" ${S.month>=CUR?'disabled':''}>›</button></div>`;
+}
+function row(m,i){
+  const st=status(m,i); let sub;
+  if(st==='paid'){const d=getDet(m,i); sub=`Paid ${fmt(RENT)} · ${d.method} · ${d.date.split(' ').slice(0,2).join(' ')}`;}
+  else if(st==='note'){sub=`Note: ${esc(m.notes[i].reason)}`;}
+  else if(st==='due'){sub=`${fmt(RENT)} pending · ${outList(m).length} month(s) unpaid`;}
+  else sub='Upcoming';
+  return `<div class="item row" onclick="openMember(${m.id})"><div class="avatar sm" style="background:${col(m.id)}">${ini(m.name)}</div><div class="grow"><div class="bold">${m.name}</div><div class="small muted">${sub}</div></div>${pill(st)}</div>`;
+}
+
+function loginScreen(){
+  return `
+  <div style="text-align:center;padding:26px 0 8px">
+    <div class="logo">🏠</div>
+    <div class="h1">Club Rent Tracker</div>
+    <p class="sub">Monthly ৳200 · Cash & bKash · Clear for everyone</p>
+  </div>
+  <div class="card">
+    <div class="field"><label>Mobile number</label>
+      <div style="display:flex;gap:8px"><input value="+880" style="width:76px" readonly/><input placeholder="1XXXXXXXXX"/></div></div>
+    <button class="btn primary" onclick="toast('OTP sent to your phone (demo)')">Send OTP</button>
+    <div class="small muted center" style="margin:4px 0 12px">Enter the 4-digit code</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">
+      ${[1,2,3,4].map(()=>'<input class="otp" maxlength="1"/>').join('')}
+    </div>
+    <button class="btn primary" onclick="go('home')">Verify &amp; continue</button>
+  </div>
+  <p class="small muted center">Only members added by the collector can sign in.</p>`;
+}
+
+function homeCollector(){
+  const i=S.month, s=summary(i), pct=Math.round(s.collected/s.expected*100);
+  const attention=members.filter(m=>['due','note'].includes(status(m,i))).slice(0,4);
+  return `
+  <div class="hdr"><div><div class="muted small">Assalamu Alaikum 👋</div><div class="h1">Tanvir (Collector)</div></div>
+    <div class="avatar" style="background:${col(4)}">TH</div></div>
+  ${monthSwitch()}
+  <div class="card hero">
+    <div class="small muted">Collected this month</div>
+    <div class="big">${fmt(s.collected)} <span>of ${fmt(s.expected)}</span></div>
+    <div class="bar"><div style="width:${pct}%"></div></div>
+    <div class="row between small" style="margin-top:8px"><span>${pct}% complete</span><span>${s.d+s.n} pending</span></div>
+  </div>
+  <div class="tiles">
+    <div class="tile g"><b>${s.p}</b><span>Paid</span></div>
+    <div class="tile r"><b>${s.d}</b><span>Due</span></div>
+    <div class="tile a"><b>${s.n}</b><span>Won't pay</span></div>
+  </div>
+  <button class="btn primary" onclick="openSheet('collect')">＋ Collect payment</button>
+  <div class="sec"><h3>Needs attention</h3><a onclick="go('members')">See all</a></div>
+  <div class="list">${attention.length?attention.map(m=>row(m,i)).join(''):'<div class="item muted center">Everyone has paid 🎉</div>'}</div>
+  <div class="sec"><h3>Recent activity</h3></div>
+  <div class="list">${activity.slice(0,4).map(a=>`<div class="act"><div class="dot"></div><div><div>${a.text}</div><div class="small muted">${a.time}</div></div></div>`).join('')}</div>`;
+}
+
+function homeMember(){
+  const m=members.find(x=>x.id===ME), i=CUR, st=status(m,i), s=summary(i), owe=outList(m).length;
+  let card;
+  if(st==='paid'){const d=getDet(m,i); card=`<div class="card ok"><div class="small">October 2026</div><div class="big2">✅ Paid</div><div class="small">${fmt(RENT)} via ${d.method} · ${d.date}</div></div>`;}
+  else if(st==='note'){card=`<div class="card warn"><div class="small">October 2026</div><div class="big2">📝 Won't pay (noted)</div><div class="small">${esc(m.notes[i].text)}</div></div>`;}
+  else {card=`<div class="card due"><div class="small">October 2026</div><div class="big2">⚠️ Due ${fmt(RENT)}</div><div class="small">Total outstanding: ${fmt(owe*RENT)} (${owe} month${owe>1?'s':''})</div></div>`;}
+  return `
+  <div class="hdr"><div><div class="muted small">Hi,</div><div class="h1">${m.name}</div></div>
+    <div class="avatar" style="background:${col(m.id)}">${ini(m.name)}</div></div>
+  ${card}
+  ${st==='due'?`<button class="btn primary" onclick="openSheet('remark')">I can't pay this month</button>`:''}
+  <div class="card"><div class="bold">Pay the collector</div>
+    <div class="small" style="margin:6px 0">Tanvir Hasan · bKash 017•• ••• 456</div>
+    <div class="small muted">Pay ৳200 by Cash or bKash. The bKash Transaction ID is recorded in the app.</div></div>
+  <div class="sec"><h3>Club board · October</h3><a onclick="go('members')">Full list</a></div>
+  <div class="stats3">
+    <div><b style="color:#166534">${s.p}</b><span>Paid</span></div>
+    <div><b style="color:#991b1b">${s.d}</b><span>Due</span></div>
+    <div><b style="color:#92400e">${s.n}</b><span>Won't pay</span></div>
+  </div>
+  <div class="list">${members.map(x=>row(x,i)).join('')}</div>`;
+}
+
+function membersScreen(){
+  const i=S.month, s=summary(i);
+  const list=members.filter(m=>S.filter==='all'||status(m,i)===S.filter);
+  const chip=(k,l,c)=>`<button class="chip ${S.filter===k?'on':''}" onclick="setFilter('${k}')">${l} ${c}</button>`;
+  return `
+  <div class="hdr"><div class="h1">Members</div></div>
+  ${monthSwitch()}
+  ${S.role==='collector'?`<button class="btn primary" onclick="openSheet('collect')">＋ Collect payment</button>`:''}
+  <div class="chips">${chip('all','All',members.length)}${chip('paid','Paid',s.p)}${chip('due','Due',s.d)}${chip('note',"Won't pay",s.n)}</div>
+  <div class="list">${list.length?list.map(m=>row(m,i)).join(''):'<div class="item muted center">No members in this filter</div>'}</div>
+  <p class="small muted center">${S.role==='collector'?'Tap a member to see history or record a payment.':'Everyone can see who has paid. Only the collector can record payments.'}</p>`;
+}
+
+function detailScreen(){
+  const m=members.find(x=>x.id===S.mid), owe=outList(m);
+  let paidTotal=0; const paidRows=[];
+  for(let i=CUR;i>=0;i--){
+    if(m.h[i]==='P'){
+      paidTotal+=RENT; const d=getDet(m,i);
+      paidRows.push(`<div class="item row"><div class="grow"><div class="bold">${FULL[i]} ${YEAR}</div><div class="small muted">${d.method}${d.trx!=='—'?' · TrxID '+d.trx:''} · ${d.date}</div></div><b>${fmt(RENT)}</b></div>`);
+    }
+  }
+  const grid=MONTHS.map((mo,i)=>{
+    const st=status(m,i); const ch=st==='paid'?'✓':st==='due'?'✕':st==='note'?'!':'';
+    return `<div class="cell ${st}" onclick="cellTap(${m.id},${i})"><span>${mo}</span><small>${ch}</small></div>`;
+  }).join('');
+  const notes=Object.keys(m.notes||{}).map(Number).sort((a,b)=>b-a).map(i=>{
+    const n=m.notes[i];
+    return `<div class="item"><div class="row between"><b>${MONTHS[i]} · ${esc(n.reason)}</b><span class="pill a">Won't pay</span></div>
+      <div style="margin:6px 0;font-size:13px">${esc(n.text)}</div>
+      <div class="small muted">${n.promise?'Promised: '+n.promise+' · ':''}Posted ${n.at}</div></div>`;
+  }).join('') || '<div class="item small muted">No notes</div>';
+  return `
+  <div class="hdr-back"><button class="back" onclick="go('members')">‹</button><div class="bold">Member profile</div></div>
+  <div class="card center">
+    <div class="avatar lg" style="background:${col(m.id)};margin:0 auto 10px">${ini(m.name)}</div>
+    <div class="h1" style="font-size:18px">${m.name}</div>
+    <div class="small muted">Member since Jan 2026 · ৳200 / month</div>
+    ${m.id===ME?'<span class="pill g" style="display:inline-block;margin-top:8px">This is you</span>':''}
+  </div>
+  <div class="stats3">
+    <div><b>${fmt(paidTotal)}</b><span>Total paid</span></div>
+    <div><b class="red">${fmt(owe.length*RENT)}</b><span>Outstanding</span></div>
+    <div><b>${owe.length}</b><span>Months unpaid</span></div>
+  </div>
+  <div class="sec"><h3>2026 payment record</h3></div>
+  <div class="grid">${grid}</div>
+  <div class="legend"><span><i style="background:#16a34a"></i>Paid</span><span><i style="background:#dc2626"></i>Due</span><span><i style="background:#d97706"></i>Won't pay</span></div>
+  <div class="sec"><h3>Notes &amp; remarks</h3></div>
+  <div class="list">${notes}</div>
+  <div class="sec"><h3>Payment history</h3></div>
+  <div class="list">${paidRows.join('') || '<div class="item small muted">No payments yet</div>'}</div>
+  ${S.role==='collector' && owe.length?`<button class="btn primary" onclick="openSheet('collect',${m.id})">Record payment</button>`:''}
+  ${m.id===ME && status(m,CUR)==='due'?`<button class="btn ghost" onclick="openSheet('remark')">I can't pay this month</button>`:''}`;
+}
+
+function duesScreen(){
+  const rows=members.map(m=>({m,ms:outList(m)})).filter(r=>r.ms.length).sort((a,b)=>b.ms.length-a.ms.length);
+  const total=rows.reduce((a,r)=>a+r.ms.length*RENT,0);
+  return `
+  <div class="hdr"><div class="h1">Dues &amp; ledger</div></div>
+  <div class="card hero">
+    <div class="small muted">Total outstanding (all time)</div>
+    <div class="big red">${fmt(total)}</div>
+    <div class="small muted">${rows.length} members have unpaid months</div>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <button class="btn small" onclick="toast('Excel report downloaded (demo)')">⬇ Excel</button>
+      <button class="btn small ghost" onclick="toast('PDF report created (demo)')">⬇ PDF</button>
+    </div>
+  </div>
+  <div class="list">${rows.map(r=>`
+    <div class="item row" onclick="openMember(${r.m.id})">
+      <div class="avatar sm" style="background:${col(r.m.id)}">${ini(r.m.name)}</div>
+      <div class="grow"><div class="bold">${r.m.name}</div>
+        <div>${r.ms.map(i=>`<span class="mini">${MONTHS[i]}</span>`).join('')}</div></div>
+      <div style="text-align:right"><b class="red">${fmt(r.ms.length*RENT)}</b><div class="small muted">${r.ms.length} mo</div></div>
+    </div>`).join('')}</div>
+  <p class="small muted center">Unpaid months stay on the ledger until paid.</p>`;
+}
+
+function setting(a,b){return `<div class="item row"><div class="grow">${a}</div><div class="muted small">${b} ›</div></div>`;}
+function meScreen(){
+  if(S.role==='collector') return `
+    <div class="hdr"><div class="h1">Settings</div></div>
+    <div class="card row"><div class="avatar" style="background:${col(4)}">TH</div>
+      <div class="grow"><div class="bold">Tanvir Hasan</div><div class="small muted">Collector · Admin</div></div></div>
+    <div class="sec"><h3>Club settings</h3></div>
+    <div class="list">
+      ${setting('Monthly share','৳200 per member')}
+      ${setting('Collection window','1st – 10th of month')}
+      ${setting('Payment methods','Cash · bKash')}
+      ${setting('Members','10 active')}
+      ${setting('Roles & access','1 collector · 9 members')}
+      ${setting('Activity log','View all')}
+    </div>
+    <button class="btn primary" onclick="toast('Add-member form (next screen in build)')">＋ Add member</button>
+    <button class="btn ghost" onclick="toast('Monthly report exported (demo)')">⬇ Export monthly report</button>
+    <button class="btn danger" onclick="go('login')">Log out</button>`;
+  const m=members.find(x=>x.id===ME), owe=outList(m);
+  return `
+    <div class="hdr"><div class="h1">My account</div></div>
+    <div class="card row"><div class="avatar" style="background:${col(m.id)}">${ini(m.name)}</div>
+      <div class="grow"><div class="bold">${m.name}</div><div class="small muted">Member</div></div></div>
+    <div class="card"><div class="bold">Pay the collector</div>
+      <div class="small" style="margin:6px 0">Tanvir Hasan · bKash 017•• ••• 456</div>
+      <div class="small muted">Monthly share: ৳200</div></div>
+    <div class="stats3">
+      <div><b>${fmt((m.h.split('P').length-1)*RENT)}</b><span>Total paid</span></div>
+      <div><b class="red">${fmt(owe.length*RENT)}</b><span>Outstanding</span></div>
+      <div><b>${owe.length}</b><span>Months unpaid</span></div>
+    </div>
+    <div class="sec"><h3>Preferences</h3></div>
+    <div class="list">${setting('Notifications','On')}${setting('Language','English / বাংলা')}</div>
+    <button class="btn danger" onclick="go('login')">Log out</button>`;
+}
+
+/* ---------- SHEETS ---------- */
+function collectSheet(){
+  const sel=members.find(m=>m.id===S.sheetMid), opts=outList(sel);
+  const memberOpts=members.map(m=>{const l=outList(m).length; return `<option value="${m.id}" ${m.id===sel.id?'selected':''}>${m.name} — ${l?fmt(l*RENT)+' due':'Paid up'}</option>`;}).join('');
+  const monthOpts=opts.map(i=>`<option value="${i}" ${i===S.sheetMonth?'selected':''}>${FULL[i]} ${YEAR}${status(sel,i)==='note'?' (won\'t pay note)':''}</option>`).join('');
+  return `
+  <div class="grab"></div>
+  <div class="h1" style="margin-bottom:12px">Collect payment</div>
+  <div class="field"><label>Member</label><select id="pMember" onchange="sheetMemberChange()">${memberOpts}</select></div>
+  <div class="field"><label>Month</label><select id="pMonth">${monthOpts||'<option>No dues — fully paid</option>'}</select></div>
+  <div class="amount"><div class="small muted">Monthly rent share (fixed)</div><b>${fmt(RENT)}</b></div>
+  <div class="field"><label>Payment method</label>
+    <div class="segm">
+      <button data-m="Cash" class="${S.method==='Cash'?'on':''}" onclick="setMethod('Cash')">💵 Cash</button>
+      <button data-m="bKash" class="${S.method==='bKash'?'on':''}" onclick="setMethod('bKash')">📱 bKash</button>
+    </div></div>
+  <div class="field" id="trxWrap" style="display:${S.method==='bKash'?'block':'none'}"><label>bKash Transaction ID</label><input id="pTrx" placeholder="e.g. BK8N7A2K9X"/></div>
+  <div class="field"><label>Date received</label><input value="18 Oct 2026" readonly/></div>
+  <button class="btn primary" ${opts.length?'':'disabled'} onclick="confirmPayment()">✓ Confirm ${fmt(RENT)} received</button>
+  <button class="btn ghost" onclick="closeSheet()">Cancel</button>`;
+}
+
+function remarkSheet(){
+  const m=members.find(x=>x.id===S.sheetMid), opts=outList(m);
+  const reasons=['Traveling','Job / income issue','Family emergency','Other'];
+  return `
+  <div class="grab"></div>
+  <div class="h1">Can't pay this month?</div>
+  <p class="sub" style="margin-bottom:14px">Your note is visible to all members on the club board. The month shows as <b style="color:#92400e">Won't pay</b> until you pay.</p>
+  <div class="field"><label>Month</label><select id="rMonth">${opts.map(i=>`<option value="${i}" ${i===S.sheetMonth?'selected':''}>${FULL[i]} ${YEAR}</option>`).join('')}</select></div>
+  <div class="field"><label>Reason</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${reasons.map(r=>`<button class="chip ${S.reason===r?'on':''}" data-r="${r}" onclick="setReason('${r}')">${r}</button>`).join('')}</div></div>
+  <div class="field"><label>I will pay by (optional)</label><input type="date" id="rDate"/></div>
+  <div class="field"><label>Note</label><textarea id="rText" placeholder="e.g. Salary comes on the 25th, I will pay then"></textarea></div>
+  <button class="btn primary" onclick="saveNote()">Save note</button>
+  <button class="btn ghost" onclick="closeSheet()">Cancel</button>`;
+}
+
+/* ---------- INFO PANEL ---------- */
+const INFO={
+ login:{t:'1 · Login',d:'Friends sign in with mobile number + OTP. Only numbers added by the collector can log in, so the club list stays private.',b:['Sign in once, stay logged in','Collector adds / removes members','Role (Collector or Member) is set at account creation']},
+ home:{t:'2 · Home dashboard',d:'Collector view: the month at a glance. Big "Collect payment" action, totals, and members who need follow-up. Member view: own status, pay-to details, and the club board.',b:['Month switcher (‹ ›) to look at earlier months','Quick tap on any member to record payment','Recent activity keeps everyone informed']},
+ members:{t:'3 · Members · month status',d:'Everyone sees who paid, who is due, and who has posted a note. Filter chips make it fast on a phone. Only the collector can record payments.',b:['Color codes: green Paid, red Due, amber Won\'t pay','Search and filters work for any past month','Transparent view for all friends']},
+ detail:{t:'4 · Member profile & history',d:'Full 12-month record for one member. Every paid month shows method, bKash TrxID and date as proof. Notes and remarks are listed by month.',b:['Tap a month cell to see its status','Outstanding amount and months unpaid at the top','Collector sees "Record payment"; member sees "I can\'t pay"']},
+ collect:{t:'5 · Collect payment (sheet)',d:'Three steps: choose member → month → method. Amount is fixed at ৳200 to prevent mistakes. bKash needs a Transaction ID so payments can be checked later.',b:['Only unpaid months are offered','Cash or bKash segmented control','Saving updates the club board instantly']},
+ remark:{t:'6 · "Can\'t pay" note (sheet)',d:'A friend can say "I won\'t pay this month" with a quick reason, an optional promise date, and a free note. It is visible to all, so the collector does not have to chase.',b:['Quick reason chips + free text','Shows as amber "Won\'t pay" on the board','Stays in history; the due still counts until paid']},
+ dues:{t:'7 · Dues & ledger',d:'The all-time ledger. Shows every unpaid month for each member, total outstanding in the club, and export to Excel or PDF for records.',b:['Sorted by largest due first','Tap a member to open their profile','Unpaid months never disappear by accident']},
+ me:{t:'8 · Settings / My account',d:'Collector settings: monthly share, payment methods, add member, roles and export. Member view: own totals, pay-to details, and preferences.',b:['Language switch planned: English / বাংলা','Activity log for audit','Logout']}
+};
+
+/* ---------- RENDER ---------- */
+function screenHTML(){
+  switch(S.screen){
+    case 'login': return loginScreen();
+    case 'home': return S.role==='collector'?homeCollector():homeMember();
+    case 'members': return membersScreen();
+    case 'detail': return detailScreen();
+    case 'dues': return duesScreen();
+    case 'me': return meScreen();
+  }
+  return '';
+}
+function render(){
+  const key=S.sheet||S.screen;
+  document.getElementById('screen').innerHTML=screenHTML();
+  const tb=document.getElementById('tabbar');
+  tb.style.display=S.screen==='login'?'none':'flex';
+  tb.innerHTML=TABS.map(([k,ic,l])=>`<button class="tab ${(S.screen===k||(S.screen==='detail'&&k==='members'))?'on':''}" onclick="go('${k}')"><i>${ic}</i>${l}</button>`).join('');
+  const ov=document.getElementById('overlay');
+  if(S.sheet){
+    ov.style.display='block';
+    ov.querySelector('.sheet').innerHTML=S.sheet==='collect'?collectSheet():remarkSheet();
+  } else ov.style.display='none';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.k===key));
+  document.querySelectorAll('.seg-role button').forEach(b=>b.classList.toggle('on',b.dataset.r===S.role));
+  const I=INFO[key]||INFO.home;
+  document.getElementById('info').innerHTML=`<h3>${I.t}</h3><p>${I.d}</p><ul>${I.b.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <div class="label" style="margin-top:18px">Design system</div>
+    <p style="font-size:12.5px">Primary <b style="color:#0f766e">#0F766E</b> · Paid <b style="color:#16a34a">#16A34A</b> · Due <b style="color:#dc2626">#DC2626</b> · Won't pay <b style="color:#d97706">#D97706</b><br/>Font: system UI (Bangla-ready). Corner radius 14–18px. Tap targets ≥ 44px.</p>`;
+}
+render();
+</script>
+</body>
+</html>

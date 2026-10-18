@@ -1,0 +1,17 @@
+{
+  "name": "club-rent-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android wrapper (Capacitor) for the Club Rent Tracker web app",
+  "scripts": {
+    "sync": "rm -rf www && cp -r ../public www && npx cap sync android",
+    "build:apk": "npm run sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/core": "^6.2.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.2"
+  }
+}

@@ -1,0 +1,165 @@
+# Club Rent Tracker
+
+A mobile-first web app for a friends' club with a ৳200 monthly share. Members pay by cash or bKash; a collector records payments; everyone sees who has paid and who owes.
+
+## Run it
+
+```bash
+npm install
+npm start            # http://localhost:3000  (binds 0.0.0.0; set PORT to change)
+npm test             # 40 API tests against a temporary database
+```
+
+Requires Node.js 18 or newer (developed on Node 20).
+
+## Deploy the backend on Render
+
+The backend is one Node web service with a persistent disk (the SQLite database and screenshots live there). The Blueprint file is `render.yaml`.
+
+**Cost:** the Starter web service (about $7/month) plus the 1 GB disk ($0.25/month). Free Render services cannot keep a disk, so the data would be lost on restart.
+
+**Steps**
+1. Push this folder to a GitHub repository (private is fine):
+   ```bash
+   git remote add origin https://github.com/YOUR-USER/club-rent-tracker.git
+   git push -u origin main
+   ```
+2. In Render, choose **New → Blueprint**, connect the repository, and apply `render.yaml`.
+3. In the service's **Environment** tab, set `ADMIN_PHONE` to the admin's mobile number (for example `01XXXXXXXXX`). `ADMIN_NAME` defaults to "Club Admin".
+4. Wait for the deploy to finish. Check `https://YOUR-SERVICE.onrender.com/api/health`. It should show `"demo":false`.
+5. Enter that URL as the **Server address** in the Android app.
+
+**Before real members can sign in:** the server refuses sign-in (HTTP 503) until an SMS provider is connected. Set `SMS_PROVIDER` only after you add an adapter for that provider in `server/sms.js`. The server never returns OTP codes when `DEMO=0`.
+
+**Environment variables**
+
+| Variable | Set in | Purpose |
+|---|---|---|
+| `DEMO` | render.yaml (`0`) | `0` on public servers. Demo mode returns OTP codes to the app. |
+| `DATA_DIR` | render.yaml (`/var/data`) | Location of the database and uploads (the persistent disk) |
+| `ADMIN_PHONE` | dashboard | Creates the first admin on an empty database |
+| `ADMIN_NAME` | render.yaml | Name for that admin |
+| `SMS_PROVIDER` | dashboard | Name of the SMS adapter (not connected yet) |
+| `PORT` | Render sets it | Port to listen on |
+
+**Backups:** the database is in `/var/data/club.db` on the disk. Download a copy from the Render shell before big changes.
+
+## Android app (APK)
+
+The Android app is the same web UI wrapped with Capacitor 6. The file is `apk/ClubRent-debug.apk`.
+
+**Install on a phone**
+1. Copy `apk/ClubRent-debug.apk` to the phone and open it. Allow "Install unknown apps" for your file manager.
+2. Start the server on a computer (`npm start`). The phone must be on the same Wi-Fi.
+3. Open **Club Rent** and enter the **Server address** on the first screen, for example `http://192.168.1.10:3000` (your computer's local IP). A public server must use `https://`.
+4. Sign in with a demo number. The OTP is shown on screen.
+
+The server address is saved on the phone. The app works only while the server is running.
+
+**Rebuild the APK** (needs JDK 17 and the Android SDK with platform 34 and build-tools 34.0.0)
+```bash
+cd mobile
+npm install
+npm run build:apk     # output: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+**Limits of this APK**
+- It is a debug build, signed with the debug key. It installs by sideloading. It is not for Google Play; a release build needs your own signing key.
+- The bKash button uses a native bridge (`CRTNative.openBkash()`) that opens the bKash app, or its Play Store page if not installed. Not tested on a real phone.
+- The launcher icon is the default Capacitor icon.
+- Camera and gallery uploads rely on the WebView file picker. Not tested on a device.
+- Not tested on an emulator or real phone in this environment. The build and package checks passed.
+- Before friends use this with real money, connect an SMS gateway and turn off demo mode (`DEMO=0`). Otherwise the OTP is shown to anyone who enters a number.
+
+## Demo accounts (dev mode)
+
+Sign in with the mobile number. In dev mode the OTP code is shown on screen.
+
+| Role | Number | Name |
+|---|---|---|
+| Admin | 01711000001 | Mahbub Alam |
+| Collector | 01711000003 | Shakil Mia (group B) |
+| Member | 01711000006 | Sabbir Ahmed (group A, collector Tanvir) |
+
+Other seeded people: collector Tanvir Hasan `01711000002` (group A: Rahim, Karim, Sabbir, Imran, Fahim); members Nabil, Rafi, Arif in group B.
+
+Role comes from the phone number. Sessions last until the user taps Log out.
+
+## What each role can do
+
+**Member**
+- Home: this month's status, outstanding dues, full payment history.
+- Pay via bKash: opens the bKash app (Android intent), shows the collector's number, and takes a screenshot upload. The app reads amount and TrxID; the member checks and sends.
+- "I'll pay cash" and "Ask for update" send a request to the collector.
+- "Won't pay this month" posts a note with a reason. It still counts as due until paid.
+- Board: everyone's paid / due / note / review status, amounts and outstanding dues. Other members' payment details (TrxID, receiver, method) are hidden.
+
+**Collector** (own group only)
+- Collect: each member's status for the month. Record cash, record bKash with TrxID, remind one member, notify selected or all unpaid.
+- Requests: verify member screenshots or status updates. Confirm updates the status. Reject requires a reason.
+- Members: add, edit, remove (deactivates; history is kept) members in own group.
+- Setup: own bKash number and monthly amount.
+- Sees every member's full history and details.
+
+**Admin** (everything collectors do, for all groups, plus):
+- Assign members to collectors, change role, monthly share and due day, admin bKash account.
+- Create collection tasks for a collector (lists unpaid members and progress).
+- Admin does not pay rent. Collectors pay the admin bKash account; members pay their collector.
+
+## Screenshot flow
+
+1. Member uploads a bKash payment screenshot (resized in the browser to ≤1600 px JPEG).
+2. Server reads it offline with **tesseract.js** (English model bundled in `node_modules`). It extracts amount, TrxID, receiver number and date. The member can correct any field.
+3. The request goes to the collector with the screenshot attached.
+4. The collector ticks "I checked this payment", then confirms or rejects.
+   - Confirm is blocked if the amount does not match the due, the TrxID is missing, or the TrxID was already used.
+   - A TrxID that was already used shows a warning on the request.
+5. Confirming records the payment and updates the board for everyone.
+
+## What is real and what is stubbed
+
+**Real (working in this build)**
+- SQLite database (`data/club.db`, WAL mode), schema and seed data.
+- Server-side permissions for every role; members cannot see other members' payment details.
+- OTP login rules: 5-minute expiry, 5 wrong attempts, then a new code is required.
+- Bearer sessions in the browser (`localStorage`) that persist until logout.
+- Offline screenshot reading with tesseract.js. Tested on a generated receipt image: amount 200, TrxID 8N7A2K9X1B, receiver 01711000002, date read correctly.
+- Confirm / reject flow, duplicate-TrxID checks, amount-mismatch blocking, notifications, collection tasks.
+
+**Stubbed or not verified**
+- **SMS OTP is not connected.** In dev mode (`DEMO` not set to `0`) the code is shown on screen and logged on the server. For production, plug an SMS gateway into `POST /api/auth/otp` and turn dev mode off.
+- **bKash deep link** (`intent://…package=com.bKash.customerapp`) is not tested on a real phone. If it does not open, the pay sheet shows the number to send to manually.
+- **bKash payments are not verified automatically.** There is no bKash merchant API. The collector checks the screenshot and TrxID by hand; the app does not confirm money arrived.
+- **Screenshot reading is OCR, not AI.** Accuracy depends on image quality. Anything it cannot read can be typed in. Test coverage is for one generated receipt layout, not many real bKash screens.
+- **Browser image resizing** (canvas) is not covered by automated tests. The server-side OCR path is.
+- Push notifications and due-date reminders are not built. Notifications appear in the Alerts tab.
+- Partial payments are not supported; a month is either paid or not.
+
+## Configuration
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PORT` | 3000 | Port to listen on (host is always 0.0.0.0) |
+| `DEMO` | on | `0` turns off demo OTP display and demo-account list |
+| `CLUB_TODAY` | real date (Asia/Dhaka) | Override the current month, e.g. `2026-10`, for testing |
+
+## Project layout
+
+```
+server/index.js   Express API: auth, members, payments, requests, notify, tasks
+server/db.js      SQLite schema and seed data
+server/ocr.js     Screenshot reader (tesseract.js) and bKash text parser
+public/           Single-page app (index.html, app.js, style.css)
+test/api.test.js  API test suite (npm test)
+test/fixtures/    Sample receipt image used by the OCR test
+data/             Database and uploaded screenshots (created at runtime)
+```
+
+## Open questions (from design; defaults used)
+
+- Only ৳200 per month, no extra fees (default: yes).
+- Members see each other's status and amount only (default; implemented).
+- Reminders by SMS or push on due dates (not built).
+- Language: English UI (default; Bangla not built).
+- Android only or iOS too: responsive web app, works on both.
+- Single admin (default).

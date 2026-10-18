@@ -1,0 +1,20 @@
+{
+  "name": "club-rent-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Club monthly rent tracker: admin, collector and member roles",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node test/api.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "better-sqlite3": "^12.11.1",
+    "express": "^4.22.3",
+    "tesseract.js": "^5.1.1"
+  }
+}
